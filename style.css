@@ -126,8 +126,13 @@ body {
   align-items: start;
 }
 
+@media (min-width: 861px) {
+  .profile-panel { position: sticky; top: 76px; }
+}
+
 @media (max-width: 860px) {
   .home-layout { grid-template-columns: 1fr; }
+  .scales-grid { grid-template-columns: 1fr; }
 }
 
 /* Profile Panel */
@@ -137,8 +142,6 @@ body {
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
   overflow: hidden;
-  position: sticky;
-  top: 80px;
 }
 
 .profile-header {
@@ -216,7 +219,8 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .scale-card.enabled {
@@ -253,7 +257,7 @@ body {
 
 .scale-card-name { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .scale-card-full { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-.scale-card-desc { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 12px; }
+.scale-card-desc { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 10px; flex-grow: 1; }
 
 .scale-card-meta {
   display: flex;
@@ -261,6 +265,7 @@ body {
   gap: 6px;
   font-size: 11px;
   color: var(--text-muted);
+  margin-top: auto;
 }
 .meta-tag {
   background: var(--bg);
@@ -273,14 +278,17 @@ body {
 }
 
 .scale-card-lock {
-  position: absolute;
-  bottom: 12px;
-  right: 14px;
+  margin-top: 10px;
   font-size: 11px;
   color: var(--text-muted);
+  background: #f4f5f7;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.5;
 }
 
 .scale-card-done {
@@ -303,6 +311,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .btn-start {

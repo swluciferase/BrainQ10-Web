@@ -92,7 +92,7 @@ function renderHome() {
 
     let actionHtml = '';
     if (!st.enabled) {
-      actionHtml = `<div class="scale-card-lock">🔒 ${st.reason}</div>`;
+      actionHtml = `<div class="scale-card-lock"><span>🔒</span><span>${st.reason}</span></div>`;
     } else if (done) {
       actionHtml = `
         <div class="scale-card-done">✓</div>
