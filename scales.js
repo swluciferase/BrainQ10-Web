@@ -228,26 +228,26 @@ const SCALES = [
   {
     id: 'snapiv',
     name: 'SNAP-IV',
-    fullName: 'SNAP-IV 注意力評估量表',
-    description: '兒童ADHD評估量表，由家長或教師依據過去一個月行為填寫',
+    fullName: 'SNAP-IV 兒童注意力量表（26題版）',
+    description: '兒童ADHD及對立反抗評估量表（26題），由家長或教師依據孩子平時表現填寫。來源：akai.org.tw 中文版常模（劉昱志等，2006）',
     category: 'ADHD評估（兒童）',
-    estimatedMinutes: 10,
-    criteria: { minAge: 6, maxAge: 18, roles: ['parent', 'teacher'] },
-    instructions: '以下問題請根據受測兒童過去一個月的行為表現，選擇最符合的選項：',
+    estimatedMinutes: 12,
+    criteria: { minAge: 6, maxAge: 13, roles: ['parent', 'teacher'] },
+    instructions: '根據孩子的平時表現，請選擇最符合孩子狀況的選項：',
     sections: [
       {
         id: 'inattention',
         label: '注意力不集中（第1–9題）',
         questions: [
-          { id: 1, text: '無法專注於細節的部分，或在做學校作業或其他活動時，出現粗心的錯誤', options: SNAP4 },
-          { id: 2, text: '很難持續專注於工作或遊戲活動', options: SNAP4 },
-          { id: 3, text: '看起來好像沒有在聽別人對他（她）說話的內容', options: SNAP4 },
-          { id: 4, text: '沒有辦法遵循指示，也無法完成學校作業或家事（並不是由於對立性行為或無法了解指示的內容）', options: SNAP4 },
-          { id: 5, text: '組織規劃工作及活動有困難', options: SNAP4 },
-          { id: 6, text: '逃避，或表達不願意，或有困難於需要持續性動腦的工作（例如學校作業或家庭作業）', options: SNAP4 },
-          { id: 7, text: '會弄丟工作上或活動所必須的東西（例如學校作業、鉛筆、書、工具或玩具）', options: SNAP4 },
-          { id: 8, text: '很容易受外在刺激影響而分心', options: SNAP4 },
-          { id: 9, text: '在日常生活中忘東忘西的', options: SNAP4 }
+          { id: 1,  text: '在做學校作業或其他活動時，無法專注於細節的部分或出現粗心的錯誤', options: SNAP4 },
+          { id: 2,  text: '很難持續專注於工作或遊戲活動', options: SNAP4 },
+          { id: 3,  text: '看起來好像沒有在聽別人對他(她)說話的內容', options: SNAP4 },
+          { id: 4,  text: '沒有辦法遵循指示，也無法完成學校作業或家事(並不是由於對立性行為或無法了解指示的內容)', options: SNAP4 },
+          { id: 5,  text: '很難組織規劃工作及活動', options: SNAP4 },
+          { id: 6,  text: '逃避、或表達不願意，或有困難於需要持續性動腦的工作(例如學校作業或家庭作業)', options: SNAP4 },
+          { id: 7,  text: '會弄丟工作上或活動所必須的東西(例如學校作業、鉛筆、書、工具或玩具)', options: SNAP4 },
+          { id: 8,  text: '很容易受外在刺激影響而分心', options: SNAP4 },
+          { id: 9,  text: '在日常生活中忘東忘西的', options: SNAP4 }
         ]
       },
       {
@@ -258,11 +258,25 @@ const SCALES = [
           { id: 11, text: '在教室或其他必須持續坐著的場合，會任意離開座位', options: SNAP4 },
           { id: 12, text: '在不適當的場合，亂跑或爬高爬低', options: SNAP4 },
           { id: 13, text: '很難安靜地玩或參與休閒活動', options: SNAP4 },
-          { id: 14, text: '總是一直在動或是像被馬達所驅動', options: SNAP4 },
+          { id: 14, text: '總是一直在動或是像裝了馬達似的動個不停', options: SNAP4 },
           { id: 15, text: '話很多', options: SNAP4 },
           { id: 16, text: '在問題還沒問完前就急著回答', options: SNAP4 },
-          { id: 17, text: '在遊戲中或團體活動中，無法排隊或等待輪流', options: SNAP4 },
-          { id: 18, text: '打斷或干擾別人（例如：插嘴或打斷別人的遊戲）', options: SNAP4 }
+          { id: 17, text: '在遊戲中或團體活動中，無法排隊或輪流等待', options: SNAP4 },
+          { id: 18, text: '打斷或干擾別人(例如：插嘴或打斷別人的遊戲)', options: SNAP4 }
+        ]
+      },
+      {
+        id: 'odd',
+        label: '對立反抗行為（第19–26題）',
+        questions: [
+          { id: 19, text: '發脾氣', options: SNAP4 },
+          { id: 20, text: '與大人爭論', options: SNAP4 },
+          { id: 21, text: '主動地反抗或拒絕大人的要求與規定', options: SNAP4 },
+          { id: 22, text: '故意地做一些事去干擾別人', options: SNAP4 },
+          { id: 23, text: '因自己犯的錯或不適當的行為而怪罪別人', options: SNAP4 },
+          { id: 24, text: '易怒的或容易被別人激怒', options: SNAP4 },
+          { id: 25, text: '生氣的及怨恨的', options: SNAP4 },
+          { id: 26, text: '惡意的或有報復心的', options: SNAP4 }
         ]
       }
     ],
@@ -270,16 +284,17 @@ const SCALES = [
       type: 'subscale_avg',
       subscales: [
         { id: 'inattention',   name: '注意力不集中', questionIds: [1,2,3,4,5,6,7,8,9],         dsmRequired: 6 },
-        { id: 'hyperactivity', name: '過動／衝動',   questionIds: [10,11,12,13,14,15,16,17,18], dsmRequired: 6 }
+        { id: 'hyperactivity', name: '過動／衝動',   questionIds: [10,11,12,13,14,15,16,17,18], dsmRequired: 6 },
+        { id: 'odd',           name: '對立反抗',     questionIds: [19,20,21,22,23,24,25,26],    dsmRequired: 4 }
       ],
       positiveItemThreshold: 2,
       avgCutoff: 2.0,
       interpretation: {
         rules: [
-          { condition: 'both',              label: 'ADHD 混合型（符合DSM-IV門檻）',           color: '#e74c3c' },
-          { condition: 'inattention_only',  label: 'ADHD 注意力不集中型（符合DSM-IV門檻）',   color: '#e67e22' },
-          { condition: 'hyperactivity_only',label: 'ADHD 過動／衝動型（符合DSM-IV門檻）',     color: '#e67e22' },
-          { condition: 'neither',           label: '未達ADHD診斷門檻',                        color: '#27ae60' }
+          { condition: 'both',              label: 'ADHD 混合型（符合DSM-IV門檻）',             color: '#e74c3c' },
+          { condition: 'inattention_only',  label: 'ADHD 注意力不集中型（符合DSM-IV門檻）',     color: '#e67e22' },
+          { condition: 'hyperactivity_only',label: 'ADHD 過動／衝動型（符合DSM-IV門檻）',       color: '#e67e22' },
+          { condition: 'neither',           label: '未達ADHD診斷門檻',                          color: '#27ae60' }
         ]
       }
     }

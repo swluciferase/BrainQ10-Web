@@ -437,12 +437,18 @@ function renderSubscaleAvgReport(report, scale) {
   const overallRule = sc.interpretation.rules.find(r => r.condition === report.overallCondition);
   const summaryStyle = `background:${overallRule.color}18; border-color:${overallRule.color}; color:${overallRule.color};`;
 
+  // ODD summary
+  const oddSub = sc.subscales.find(s => s.id === 'odd');
+  const oddHtml = oddSub && report.oddPositive ? `
+    <div class="report-flag">⚠️ 對立反抗向度（ODD）達DSM-IV門檻（陽性題數 ${report.positiveItems['odd']} ≥ ${oddSub.dsmRequired}），建議轉介專業評估。</div>` : '';
+
   return `
     <div class="report-summary" style="${summaryStyle}">
-      <div class="report-summary-label">綜合評估</div>
+      <div class="report-summary-label">ADHD 綜合評估</div>
       <div class="report-summary-result">${overallRule.label}</div>
-      <div class="report-summary-note">以下各向度得分 ≥ 2.0 且 ≥6題達陽性標準為符合DSM-IV診斷門檻。本結果僅供參考，診斷需由專業醫師判定。</div>
+      <div class="report-summary-note">各向度平均分 ≥ 2.0 且 ≥ 指定題數達陽性標準（評分 ≥ 2）為符合DSM-IV診斷門檻。本結果僅供參考，診斷需由專業醫師判定。</div>
     </div>
+    ${oddHtml}
     <div class="report-section">
       <div class="report-section-title">各向度分析</div>
       <table class="score-table">
@@ -647,6 +653,11 @@ function calculateScore(scale, answers) {
       : innPos ? 'inattention_only'
       : hypPos ? 'hyperactivity_only'
       : 'neither';
+    // ODD
+    const oddSub = sc.subscales.find(s => s.id === 'odd');
+    if (oddSub) {
+      result.oddPositive = result.positiveItems['odd'] >= oddSub.dsmRequired;
+    }
 
   } else if (sc.type === 'vanderbilt') {
     result.positiveItems = {};
