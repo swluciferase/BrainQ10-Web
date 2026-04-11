@@ -24,6 +24,24 @@ function todayStr() {
   return new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
 }
 
+function todayISO() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function ageFromDOB(iso) {
+  if (!iso) return '';
+  const dob = new Date(iso);
+  if (isNaN(dob)) return '';
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age >= 0 && age <= 130 ? String(age) : '';
+}
+
 // ─────────────────────────────────────────
 // 主入口
 // ─────────────────────────────────────────
@@ -42,11 +60,11 @@ function getScaleStatus(scale) {
   const age = parseInt(S.profile.subjectAge);
   const rel = S.profile.respondentRelationship;
 
-  if (!S.profile.subjectAge && !S.profile.respondentRelationship) {
-    return { enabled: false, reason: '請先填寫受測者年齡與填答者關係' };
+  if (!S.profile.subjectDOB && !S.profile.respondentRelationship) {
+    return { enabled: false, reason: '請先填寫出生日期與填答者關係' };
   }
-  if (!S.profile.subjectAge) {
-    return { enabled: false, reason: '請先填寫受測者年齡' };
+  if (!S.profile.subjectDOB || !S.profile.subjectAge) {
+    return { enabled: false, reason: '請先填寫受測者出生日期' };
   }
   if (!S.profile.respondentRelationship) {
     return { enabled: false, reason: '請先填寫填答者與本人關係' };
@@ -70,7 +88,7 @@ function getScaleStatus(scale) {
 
 function profileComplete() {
   const p = S.profile;
-  return p.subjectName && p.subjectAge && p.respondentRelationship;
+  return p.subjectName && p.subjectDOB && p.subjectAge && p.respondentRelationship;
 }
 
 // ─────────────────────────────────────────
@@ -80,7 +98,10 @@ function renderHome() {
   const cards = SCALES.map(scale => {
     const st = getScaleStatus(scale);
     const done = S.completedReports[scale.id];
-    const badgeCls = scale.category.includes('ADHD') ? 'badge-adhd' : 'badge-emotion';
+    let badgeCls = 'badge-emotion';
+    if (scale.category.includes('ADHD'))      badgeCls = 'badge-adhd';
+    else if (scale.category.includes('認知')) badgeCls = 'badge-cognitive';
+    else if (scale.category.includes('行為')) badgeCls = 'badge-behavior';
 
     const rolesLabel = (scale.criteria.roles || []).map(r =>
       ({self:'本人',parent:'家長',teacher:'教師',other:'其他'}[r])
@@ -125,7 +146,7 @@ function renderHome() {
   const noticeHtml = profileComplete() ? '' : `
     <div class="profile-notice">
       <span class="profile-notice-icon">💡</span>
-      <span>請先填寫左側個人資料（受測者年齡與填答者關係為必填），系統將自動開放適用的量表。</span>
+      <span>請先填寫左側個人資料（受測者出生日期與填答者關係為必填），系統將自動開放適用的量表。</span>
     </div>`;
 
   return `
@@ -142,10 +163,14 @@ function renderHome() {
             <label>姓名</label>
             <input type="text" id="f-subjectName" value="${esc(S.profile.subjectName)}" placeholder="受測者姓名">
           </div>
+          <div class="form-group">
+            <label>出生日期 <span style="color:#e74c3c">*</span></label>
+            <input type="date" id="f-subjectDOB" value="${esc(S.profile.subjectDOB)}" max="${todayISO()}">
+          </div>
           <div class="form-row">
             <div class="form-group">
-              <label>年齡 <span style="color:#e74c3c">*</span></label>
-              <input type="number" id="f-subjectAge" value="${esc(S.profile.subjectAge)}" placeholder="歲" min="1" max="120">
+              <label>年齡（自動帶入）</label>
+              <input type="text" id="f-subjectAge" value="${S.profile.subjectAge ? S.profile.subjectAge + ' 歲' : ''}" placeholder="—" readonly>
             </div>
             <div class="form-group">
               <label>性別</label>
@@ -156,10 +181,6 @@ function renderHome() {
                 <option value="other"  ${S.profile.subjectGender==='other'  ? 'selected' : ''}>其他</option>
               </select>
             </div>
-          </div>
-          <div class="form-group">
-            <label>出生日期</label>
-            <input type="date" id="f-subjectDOB" value="${esc(S.profile.subjectDOB)}">
           </div>
 
           <div class="profile-divider">填答者資料</div>
@@ -304,6 +325,10 @@ function renderReport() {
     bodyHtml = renderVanderbiltReport(report, scale);
   } else if (scale.scoring.type === 'bach') {
     bodyHtml = renderBachReport(report, scale);
+  } else if (scale.scoring.type === 'mdq') {
+    bodyHtml = renderMdqReport(report, scale);
+  } else if (scale.scoring.type === 'audit') {
+    bodyHtml = renderAuditReport(report, scale);
   }
 
   // Flags
@@ -315,7 +340,7 @@ function renderReport() {
     <div class="view">
       <div class="report-container">
         <div class="report-header">
-          <div class="report-brand">BrainQ10 神經發展評量系統</div>
+          <div class="report-brand">ScalarMynd ─ Measuring the depth of your mind</div>
           <div class="report-scale-name">${scale.fullName}</div>
           <div class="report-meta-row">
             <div class="report-meta-item">受測者：<strong>${esc(p.subjectName) || '─'}</strong></div>
@@ -580,6 +605,93 @@ function renderBachReport(report, scale) {
     </div>`;
 }
 
+// ── 計分：mdq
+function renderMdqReport(report, scale) {
+  const sc = scale.scoring;
+  const positive = report.mdqPositive;
+  const color = positive ? '#e74c3c' : '#27ae60';
+  const summaryStyle = `background:${color}18; border-color:${color}; color:${color};`;
+
+  const impairmentLabel = ['沒有問題','輕度問題','中度問題','嚴重問題'][report.impairment] || '─';
+
+  return `
+    <div class="report-summary" style="${summaryStyle}">
+      <div class="report-summary-label">MDQ 篩查結果</div>
+      <div class="report-summary-result">${positive ? '篩查陽性（建議進一步評估）' : '篩查陰性'}</div>
+      <div class="report-summary-note">
+        ${positive
+          ? '結果符合 MDQ 陽性條件，建議由精神科醫師進行雙相情感障礙完整評估。本結果僅供參考，最終診斷須由專業醫師判定。'
+          : '目前結果未達 MDQ 陽性條件。若仍有疑慮，請尋求專業協助。'}
+      </div>
+    </div>
+    <div class="report-section">
+      <div class="report-section-title">篩查條件評估</div>
+      <table class="score-table">
+        <thead><tr><th>條件</th><th>結果</th><th>是否符合</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>第一部分：症狀數量（≥${sc.symptomThreshold} 項回答「是」）</td>
+            <td>${report.symptomPositive} / ${sc.symptomIds.length}</td>
+            <td><span class="dsm-badge ${report.symptomPositive >= sc.symptomThreshold ? 'dsm-positive' : 'dsm-negative'}">
+              ${report.symptomPositive >= sc.symptomThreshold ? '✗ 達門檻' : '✓ 未達門檻'}
+            </span></td>
+          </tr>
+          <tr>
+            <td>第二部分：症狀同時發生</td>
+            <td>${report.concurrent ? '是' : '否'}</td>
+            <td><span class="dsm-badge ${report.concurrent ? 'dsm-positive' : 'dsm-negative'}">
+              ${report.concurrent ? '✗ 是' : '✓ 否'}
+            </span></td>
+          </tr>
+          <tr>
+            <td>第三部分：困擾程度（≥中度問題）</td>
+            <td>${impairmentLabel}</td>
+            <td><span class="dsm-badge ${report.impairment >= sc.impairmentThreshold ? 'dsm-positive' : 'dsm-negative'}">
+              ${report.impairment >= sc.impairmentThreshold ? '✗ 達門檻' : '✓ 未達門檻'}
+            </span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:8px">
+        * MDQ 陽性需同時滿足：第一部分 ≥${sc.symptomThreshold} 項陽性、第二部分為「是」、第三部分困擾程度 ≥ 中度。
+      </p>
+    </div>
+    ${renderScoreBreakdown(scale, report)}`;
+}
+
+// ── 計分：audit
+function renderAuditReport(report, scale) {
+  const sc = scale.scoring;
+  const r = report.range;
+  const summaryStyle = `background:${r.color}18; border-color:${r.color}; color:${r.color};`;
+  const genderNote = report.cutoffLabel === '女性切點'
+    ? `女性以 ${sc.cutoffFemale} 分為問題性飲酒切點`
+    : `男性以 ${sc.cutoffMale} 分為問題性飲酒切點`;
+
+  return `
+    <div class="report-summary" style="${summaryStyle}">
+      <div class="report-summary-label">AUDIT 評估結果</div>
+      <div class="report-summary-result">${r.label}</div>
+      <div class="report-summary-score">總分：${report.total} / 40 分（${genderNote}）</div>
+      <div class="report-summary-note">${r.note}</div>
+    </div>
+    <div class="report-section">
+      <div class="report-section-title">分數區間說明</div>
+      <table class="score-table">
+        <thead><tr><th>分數區間</th><th>分類</th><th>建議</th></tr></thead>
+        <tbody>
+          ${sc.ranges.map(rg => `
+            <tr ${report.total >= rg.min && report.total <= rg.max ? 'style="background:'+rg.color+'12; font-weight:600"' : ''}>
+              <td>${rg.min}–${rg.max}</td>
+              <td><span class="dsm-badge" style="background:${rg.color}20; color:${rg.color}">${rg.label}</span></td>
+              <td style="font-size:12px">${rg.note}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${renderScoreBreakdown(scale, report)}`;
+}
+
 // ── 原始作答詳情
 function renderScoreBreakdown(scale, report) {
   const allQ = getAllQuestions(scale);
@@ -694,6 +806,27 @@ function calculateScore(scale, answers) {
         score: answers[q.id] || 1
       }));
     });
+
+  } else if (sc.type === 'mdq') {
+    const symPositive = sc.symptomIds.filter(id => answers[id] === 1).length;
+    const concurrent = answers[sc.concurrentId] === 1;
+    const impairment = answers[sc.impairmentId] || 0;
+    const meetsSymCount = symPositive >= sc.symptomThreshold;
+    const meetsImpairment = impairment >= sc.impairmentThreshold;
+    result.symptomPositive = symPositive;
+    result.concurrent = concurrent;
+    result.impairment = impairment;
+    result.mdqPositive = meetsSymCount && concurrent && meetsImpairment;
+
+  } else if (sc.type === 'audit') {
+    const total = sc.questionIds.reduce((s, id) => s + (answers[id] || 0), 0);
+    result.total = total;
+    const gender = (S.profile.subjectGender || '').toLowerCase();
+    const cutoff = gender === 'female' ? sc.cutoffFemale : sc.cutoffMale;
+    result.cutoff = cutoff;
+    result.cutoffLabel = gender === 'female' ? '女性切點' : '男性切點';
+    result.problematic = total >= cutoff;
+    result.range = sc.ranges.find(r => total >= r.min && total <= r.max) || sc.ranges[sc.ranges.length - 1];
   }
 
   return result;
@@ -729,42 +862,64 @@ function esc(str) {
 // 事件綁定
 // ─────────────────────────────────────────
 function bindEvents() {
-  // Profile inputs
-  ['subjectName','subjectAge','subjectDOB','subjectGender','respondentName','respondentRelationship','assessmentDate'].forEach(field => {
-    const el = document.getElementById('f-' + field);
-    if (!el) return;
-    el.addEventListener('change', e => {
-      S.profile[field] = e.target.value;
-      if (field === 'subjectAge' || field === 'respondentRelationship') {
-        render(); // 重新渲染更新量表狀態
+  // Subject name input
+  const subjectNameEl = document.getElementById('f-subjectName');
+  if (subjectNameEl) {
+    subjectNameEl.addEventListener('input', e => {
+      S.profile.subjectName = e.target.value;
+      // 若填答者選「本人」，同步姓名
+      if (S.profile.respondentRelationship === 'self') {
+        S.profile.respondentName = e.target.value;
+        const respEl = document.getElementById('f-respondentName');
+        if (respEl) respEl.value = e.target.value;
       }
     });
-    el.addEventListener('input', e => {
-      S.profile[field] = e.target.value;
-      if (field === 'subjectAge' || field === 'respondentRelationship') {
-        // debounce
-        clearTimeout(el._timer);
-        el._timer = setTimeout(() => render(), 500);
-      }
-    });
-  });
+  }
 
-  // DOB → auto fill age
+  // DOB → auto-fill age + re-render
   const dobEl = document.getElementById('f-subjectDOB');
   if (dobEl) {
     dobEl.addEventListener('change', e => {
-      if (!e.target.value) return;
-      const dob = new Date(e.target.value);
-      const today = new Date();
-      let age = today.getFullYear() - dob.getFullYear();
-      const m = today.getMonth() - dob.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-      if (age > 0) {
-        S.profile.subjectAge = String(age);
-        const ageEl = document.getElementById('f-subjectAge');
-        if (ageEl) ageEl.value = age;
-        render();
+      S.profile.subjectDOB = e.target.value;
+      const age = ageFromDOB(e.target.value);
+      S.profile.subjectAge = age;
+      render();
+    });
+  }
+
+  // Gender
+  const genderEl = document.getElementById('f-subjectGender');
+  if (genderEl) {
+    genderEl.addEventListener('change', e => {
+      S.profile.subjectGender = e.target.value;
+    });
+  }
+
+  // Respondent name
+  const respondentNameEl = document.getElementById('f-respondentName');
+  if (respondentNameEl) {
+    respondentNameEl.addEventListener('input', e => {
+      S.profile.respondentName = e.target.value;
+    });
+  }
+
+  // Relationship → re-render + auto-fill name on "self"
+  const relEl = document.getElementById('f-respondentRelationship');
+  if (relEl) {
+    relEl.addEventListener('change', e => {
+      S.profile.respondentRelationship = e.target.value;
+      if (e.target.value === 'self') {
+        S.profile.respondentName = S.profile.subjectName;
       }
+      render();
+    });
+  }
+
+  // Assessment date
+  const dateEl = document.getElementById('f-assessmentDate');
+  if (dateEl) {
+    dateEl.addEventListener('input', e => {
+      S.profile.assessmentDate = e.target.value;
     });
   }
 

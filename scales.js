@@ -1,5 +1,11 @@
-// BrainQ10 量表資料定義
-// 包含：GDS-15, PHQ-9, ASRS, SNAP-IV, Vanderbilt家長版, Vanderbilt教師版, 巴哈花精
+// ScalarMynd 量表資料定義
+// 包含：GDS-15, PHQ-9, GAD-7, MDQ, AD8, PSQI, AUDIT, ASRS, WURS-25,
+//      SNAP-IV, Vanderbilt家長版, Vanderbilt教師版, 巴哈花精
+
+const YN_01 = [
+  { label: '否', value: 0 },
+  { label: '是', value: 1 }
+];
 
 const FREQ4 = [
   { label: '從不', value: 0 },
@@ -44,6 +50,57 @@ const LIKERT5 = [
   { label: '3 – 有些符合', value: 3 },
   { label: '4 – 大部分符合', value: 4 },
   { label: '5 – 非常符合', value: 5 }
+];
+
+// WURS-25：0=完全不、4=非常多
+const WURS5 = [
+  { label: '0 – 完全沒有', value: 0 },
+  { label: '1 – 輕微', value: 1 },
+  { label: '2 – 中等', value: 2 },
+  { label: '3 – 明顯', value: 3 },
+  { label: '4 – 非常多', value: 4 }
+];
+
+// PSQI 因子分（每題已換算為 0–3 因子分）
+const PSQI4 = [
+  { label: '0 – 沒有困擾', value: 0 },
+  { label: '1 – 輕度', value: 1 },
+  { label: '2 – 中度', value: 2 },
+  { label: '3 – 重度', value: 3 }
+];
+
+// AUDIT 標準頻率選項
+const AUDIT_FREQ = [
+  { label: '從不', value: 0 },
+  { label: '每月一次或更少', value: 1 },
+  { label: '每月 2–4 次', value: 2 },
+  { label: '每週 2–3 次', value: 3 },
+  { label: '每週 4 次以上', value: 4 }
+];
+
+// AUDIT Q2 飲酒量
+const AUDIT_DRINKS = [
+  { label: '1–2 標準杯', value: 0 },
+  { label: '3–4 標準杯', value: 1 },
+  { label: '5–6 標準杯', value: 2 },
+  { label: '7–9 標準杯', value: 3 },
+  { label: '10 標準杯以上', value: 4 }
+];
+
+// AUDIT Q3-Q8 一般頻率
+const AUDIT_FREQ2 = [
+  { label: '從不', value: 0 },
+  { label: '不到每月一次', value: 1 },
+  { label: '每月一次', value: 2 },
+  { label: '每週一次', value: 3 },
+  { label: '每天或幾乎每天', value: 4 }
+];
+
+// AUDIT Q9-Q10 三選項
+const AUDIT_3OPT = [
+  { label: '沒有', value: 0 },
+  { label: '有，但去年沒發生', value: 2 },
+  { label: '有，去年發生過', value: 4 }
 ];
 
 const SCALES = [
@@ -144,7 +201,269 @@ const SCALES = [
   },
 
   // ─────────────────────────────────────────────
-  // 3. ASRS-v1.1 成人ADHD自填量表
+  // 3. GAD-7 廣泛性焦慮症量表
+  // ─────────────────────────────────────────────
+  {
+    id: 'gad7',
+    name: 'GAD-7',
+    fullName: '廣泛性焦慮症量表 (GAD-7)',
+    description: '焦慮症篩查量表，評估過去兩週的焦慮狀況',
+    category: '情緒評估',
+    estimatedMinutes: 3,
+    criteria: { minAge: 18, maxAge: null, roles: ['self'] },
+    instructions: '在過去兩個星期，您是否被以下任何問題所困擾：',
+    sections: [
+      {
+        id: 'main',
+        label: null,
+        questions: [
+          { id: 1, text: '感到緊張、不安或心煩',                                  options: PHQ4 },
+          { id: 2, text: '無法停止或控制憂慮',                                    options: PHQ4 },
+          { id: 3, text: '對各種不同的事情有過多的憂慮',                          options: PHQ4 },
+          { id: 4, text: '很難放鬆',                                              options: PHQ4 },
+          { id: 5, text: '無法靜下來，坐立不安',                                  options: PHQ4 },
+          { id: 6, text: '變得容易心煩或易怒',                                    options: PHQ4 },
+          { id: 7, text: '害怕、彷彿有不祥的事將發生',                            options: PHQ4 }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'sum',
+      subscales: [{ id: 'total', name: '總分', questionIds: [1,2,3,4,5,6,7] }],
+      interpretation: {
+        subscaleId: 'total',
+        ranges: [
+          { min: 0,  max: 4,  severity: 'minimal',  label: '極少焦慮', color: '#27ae60', note: '焦慮症狀輕微，請持續維持。' },
+          { min: 5,  max: 9,  severity: 'mild',     label: '輕度焦慮', color: '#f39c12', note: '建議觀察情緒變化，必要時尋求支持。' },
+          { min: 10, max: 14, severity: 'moderate', label: '中度焦慮', color: '#e67e22', note: '建議尋求心理諮詢或進一步評估。' },
+          { min: 15, max: 21, severity: 'severe',   label: '重度焦慮', color: '#e74c3c', note: '強烈建議盡快尋求專業醫療協助。' }
+        ]
+      }
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 4. MDQ 情緒障礙問卷（雙相情感障礙篩檢）
+  // ─────────────────────────────────────────────
+  {
+    id: 'mdq',
+    name: 'MDQ',
+    fullName: '情緒障礙問卷 (MDQ)',
+    description: '雙相情感障礙（躁鬱症）篩檢量表，回顧過往是否曾出現躁症期症狀',
+    category: '情緒評估',
+    estimatedMinutes: 5,
+    criteria: { minAge: 18, maxAge: null, roles: ['self'] },
+    instructions: '請依過去任何時期是否曾經發生以下狀況回答「是」或「否」：',
+    sections: [
+      {
+        id: 'symptoms',
+        label: '第一部分：症狀（第1–13題）',
+        questions: [
+          { id: 1,  text: '感覺心情格外好或亢奮，與平常不同，別人認為您不太正常，或興奮到讓您惹上麻煩',     options: YN_01 },
+          { id: 2,  text: '異常易怒，會對人大喊大叫，或與人爭吵打架',                                       options: YN_01 },
+          { id: 3,  text: '對自己的能力比平常更有自信',                                                     options: YN_01 },
+          { id: 4,  text: '比平時需要更少的睡眠也不會疲倦',                                                 options: YN_01 },
+          { id: 5,  text: '比平常更健談或話講得更快',                                                       options: YN_01 },
+          { id: 6,  text: '腦中思緒紛飛、想法很多，無法慢下來',                                             options: YN_01 },
+          { id: 7,  text: '注意力很容易被周圍事物分散，無法專注',                                           options: YN_01 },
+          { id: 8,  text: '比平常更有精力',                                                                 options: YN_01 },
+          { id: 9,  text: '比平常更積極活躍，做更多的事情',                                                 options: YN_01 },
+          { id: 10, text: '比平常更愛社交、外出，例如半夜打電話給朋友',                                     options: YN_01 },
+          { id: 11, text: '對性的興趣比平常增加',                                                           options: YN_01 },
+          { id: 12, text: '做出您認為過於冒險、愚蠢或危險的事',                                             options: YN_01 },
+          { id: 13, text: '花錢過度而讓您或家人陷入困境',                                                   options: YN_01 }
+        ]
+      },
+      {
+        id: 'concurrent',
+        label: '第二部分：症狀同時發生',
+        questions: [
+          { id: 14, text: '上述任何幾項出現「是」的情況，是否曾在同一段時期發生？', options: YN_01 }
+        ]
+      },
+      {
+        id: 'impairment',
+        label: '第三部分：困擾程度',
+        note: '0=沒有問題，1=輕度問題，2=中度問題，3=嚴重問題',
+        questions: [
+          { id: 15, text: '上述問題對您的家庭、工作、學習、財務或人際關係造成多大困擾？',
+            options: [
+              { label: '0 – 沒有問題', value: 0 },
+              { label: '1 – 輕度問題', value: 1 },
+              { label: '2 – 中度問題', value: 2 },
+              { label: '3 – 嚴重問題', value: 3 }
+            ]
+          }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'mdq',
+      symptomIds: [1,2,3,4,5,6,7,8,9,10,11,12,13],
+      symptomThreshold: 7,
+      concurrentId: 14,
+      impairmentId: 15,
+      impairmentThreshold: 2
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 5. AD8 極早期失智症篩檢量表
+  // ─────────────────────────────────────────────
+  {
+    id: 'ad8',
+    name: 'AD8',
+    fullName: 'AD8 極早期失智症篩檢量表',
+    description: '由親屬觀察長者近年的認知與功能改變（共8題），≥2分需就醫評估',
+    category: '認知功能',
+    estimatedMinutes: 3,
+    criteria: { minAge: 50, maxAge: null, roles: ['parent', 'other'] },
+    instructions: '請依長者近年來與過往相比是否有「改變」回答（並非單純「目前是否有困難」）：',
+    sections: [
+      {
+        id: 'main',
+        label: null,
+        questions: [
+          { id: 1, text: '判斷力出現問題（例如：易上當受騙、財務決策不佳、買不合宜的禮物）', options: YN_01 },
+          { id: 2, text: '對嗜好或活動的興趣降低',                                              options: YN_01 },
+          { id: 3, text: '不斷重複相同問題、故事或陳述',                                        options: YN_01 },
+          { id: 4, text: '在學習如何使用工具、設備或家電上有困難（如電視遙控器、微波爐）',     options: YN_01 },
+          { id: 5, text: '忘記正確的月份或年份',                                                options: YN_01 },
+          { id: 6, text: '處理複雜的財務問題有困難（例如：對帳、繳稅、平衡支票簿）',           options: YN_01 },
+          { id: 7, text: '記住約會的時間有困難',                                                options: YN_01 },
+          { id: 8, text: '每天都有思考及記憶上的問題',                                          options: YN_01 }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'sum',
+      subscales: [{ id: 'total', name: '總分', questionIds: [1,2,3,4,5,6,7,8] }],
+      interpretation: {
+        subscaleId: 'total',
+        ranges: [
+          { min: 0, max: 1, severity: 'normal', label: '正常範圍',     color: '#27ae60', note: '目前無明顯認知功能改變。' },
+          { min: 2, max: 8, severity: 'risk',   label: '具失智症風險', color: '#e74c3c', note: '建議盡快至神經內科或記憶門診接受完整評估。' }
+        ]
+      }
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 6. PSQI 匹茲堡睡眠品質指數（簡化 7 因子版）
+  // ─────────────────────────────────────────────
+  {
+    id: 'psqi',
+    name: 'PSQI',
+    fullName: '匹茲堡睡眠品質指數 (PSQI)',
+    description: '評估過去一個月的睡眠品質。涵蓋 7 個面向，總分 0–21（>5 顯示睡眠品質障礙）',
+    category: '認知功能',
+    estimatedMinutes: 4,
+    criteria: { minAge: 18, maxAge: null, roles: ['self'] },
+    instructions: '請依過去一個月的睡眠狀況回答下列 7 個面向。每題請選擇一個 0–3 的因子分。',
+    sections: [
+      {
+        id: 'main',
+        label: null,
+        questions: [
+          { id: 1, text: '整體主觀睡眠品質（您對自己睡眠品質的總體評價）',
+            options: [
+              { label: '0 – 非常好', value: 0 },
+              { label: '1 – 還算好', value: 1 },
+              { label: '2 – 不太好', value: 2 },
+              { label: '3 – 非常差', value: 3 }
+            ]
+          },
+          { id: 2, text: '入睡所需時間',
+            options: [
+              { label: '0 – ≤15 分鐘',  value: 0 },
+              { label: '1 – 16–30 分鐘', value: 1 },
+              { label: '2 – 31–60 分鐘', value: 2 },
+              { label: '3 – >60 分鐘',  value: 3 }
+            ]
+          },
+          { id: 3, text: '實際睡眠時數',
+            options: [
+              { label: '0 – >7 小時',   value: 0 },
+              { label: '1 – 6–7 小時',  value: 1 },
+              { label: '2 – 5–6 小時',  value: 2 },
+              { label: '3 – <5 小時',   value: 3 }
+            ]
+          },
+          { id: 4, text: '習慣性睡眠效率（實際睡眠時數 ÷ 躺床時數 × 100%）',
+            options: [
+              { label: '0 – ≥85%',     value: 0 },
+              { label: '1 – 75–84%',   value: 1 },
+              { label: '2 – 65–74%',   value: 2 },
+              { label: '3 – <65%',     value: 3 }
+            ]
+          },
+          { id: 5, text: '睡眠干擾（夜間醒來、惡夢、疼痛、呼吸不順等出現的頻率）',         options: PSQI4 },
+          { id: 6, text: '使用安眠藥物的頻率',                                              options: PSQI4 },
+          { id: 7, text: '日間功能障礙（白天嗜睡、做事提不起勁、注意力下降的程度）',        options: PSQI4 }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'sum',
+      subscales: [{ id: 'total', name: '總分', questionIds: [1,2,3,4,5,6,7] }],
+      interpretation: {
+        subscaleId: 'total',
+        ranges: [
+          { min: 0,  max: 5,  severity: 'good', label: '睡眠品質尚可', color: '#27ae60', note: '目前睡眠品質在可接受範圍內。' },
+          { min: 6,  max: 10, severity: 'mild', label: '輕度睡眠障礙', color: '#f39c12', note: '建議檢視睡眠衛生並持續觀察。' },
+          { min: 11, max: 15, severity: 'moderate', label: '中度睡眠障礙', color: '#e67e22', note: '建議尋求專業協助評估睡眠問題。' },
+          { min: 16, max: 21, severity: 'severe',   label: '重度睡眠障礙', color: '#e74c3c', note: '強烈建議至睡眠門診接受完整評估。' }
+        ]
+      }
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 7. AUDIT 酒精使用疾患確認檢測
+  // ─────────────────────────────────────────────
+  {
+    id: 'audit',
+    name: 'AUDIT',
+    fullName: '酒精使用疾患確認檢測 (AUDIT)',
+    description: 'WHO 推薦的飲酒問題篩檢量表（10題）。男性 ≥8 分、女性 ≥4 分屬問題性飲酒',
+    category: '行為健康',
+    estimatedMinutes: 5,
+    criteria: { minAge: 18, maxAge: null, roles: ['self'] },
+    instructions: '以下問題請根據您過去一年的飲酒情形回答。1 標準杯約等於：啤酒 1 罐(330ml)、葡萄酒 1 杯(120ml)、烈酒 1 小杯(30ml)。',
+    sections: [
+      {
+        id: 'main',
+        label: null,
+        questions: [
+          { id: 1,  text: '您多久喝一次含酒精的飲料？',                                              options: AUDIT_FREQ },
+          { id: 2,  text: '在喝酒的日子裡，您通常會喝幾杯？',                                        options: AUDIT_DRINKS },
+          { id: 3,  text: '您多久會在一次飲酒中喝下 6 杯以上？',                                     options: AUDIT_FREQ2 },
+          { id: 4,  text: '在過去一年中，您發現自己一旦開始喝酒就無法停止的頻率？',                  options: AUDIT_FREQ2 },
+          { id: 5,  text: '在過去一年中，您因飲酒而無法做到別人對您一般期望事情的頻率？',            options: AUDIT_FREQ2 },
+          { id: 6,  text: '在過去一年中，您因前一晚大量飲酒而需要在早上喝酒提神的頻率？',            options: AUDIT_FREQ2 },
+          { id: 7,  text: '在過去一年中，您在飲酒後感到罪惡或後悔的頻率？',                          options: AUDIT_FREQ2 },
+          { id: 8,  text: '在過去一年中，您因飲酒而無法記得前一晚發生的事情的頻率？',                options: AUDIT_FREQ2 },
+          { id: 9,  text: '您或他人是否因您的飲酒而受傷？',                                          options: AUDIT_3OPT },
+          { id: 10, text: '是否有親友、醫師或其他健康專業人員關心過您的飲酒，或建議您減少飲酒？',    options: AUDIT_3OPT }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'audit',
+      questionIds: [1,2,3,4,5,6,7,8,9,10],
+      cutoffMale: 8,
+      cutoffFemale: 4,
+      ranges: [
+        { min: 0,  max: 7,  label: '低風險飲酒',           color: '#27ae60', note: '目前飲酒模式風險較低。建議保持節制。' },
+        { min: 8,  max: 15, label: '危險性飲酒',           color: '#f39c12', note: '飲酒模式可能對健康造成風險，建議減少飲酒並接受衛教。' },
+        { min: 16, max: 19, label: '有害飲酒',             color: '#e67e22', note: '建議尋求簡短介入與專業諮詢。' },
+        { min: 20, max: 40, label: '可能酒精依賴',         color: '#e74c3c', note: '強烈建議至成癮專科或精神科就診接受完整評估與治療。' }
+      ]
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 8. ASRS-v1.1 成人ADHD自填量表
   // ─────────────────────────────────────────────
   {
     id: 'asrs',
@@ -223,7 +542,66 @@ const SCALES = [
   },
 
   // ─────────────────────────────────────────────
-  // 4. SNAP-IV 兒童注意力評估量表
+  // 9. WURS-25 溫德猶他評量表（成人回憶童年 ADHD）
+  // ─────────────────────────────────────────────
+  {
+    id: 'wurs25',
+    name: 'WURS-25',
+    fullName: '溫德猶他評量表（WURS-25）',
+    description: '成人回憶 5–10 歲時的行為表現（25題）。總分 ≥46 高度符合童年 ADHD 軌跡',
+    category: 'ADHD評估',
+    estimatedMinutes: 8,
+    criteria: { minAge: 18, maxAge: null, roles: ['self'] },
+    instructions: '請根據您 5–10 歲時的情況，依據題目選擇最符合的程度（0=完全沒有，4=非常多）：',
+    sections: [
+      {
+        id: 'main',
+        label: null,
+        questions: [
+          { id: 1,  text: '主動、坐立不安',                                  options: WURS5 },
+          { id: 2,  text: '害怕、焦慮、擔心',                                options: WURS5 },
+          { id: 3,  text: '在學校或社交場合中感到緊張',                      options: WURS5 },
+          { id: 4,  text: '注意力不集中、容易分心、做白日夢',                options: WURS5 },
+          { id: 5,  text: '脾氣急躁、容易爆發',                              options: WURS5 },
+          { id: 6,  text: '沒耐心，無法等待輪流',                            options: WURS5 },
+          { id: 7,  text: '哭泣的次數多',                                    options: WURS5 },
+          { id: 8,  text: '有情緒困擾、易感低落',                            options: WURS5 },
+          { id: 9,  text: '遇到挫折時容易沮喪',                              options: WURS5 },
+          { id: 10, text: '反抗、頂嘴、態度消極',                            options: WURS5 },
+          { id: 11, text: '頑固、固執己見',                                  options: WURS5 },
+          { id: 12, text: '自尊心低落',                                      options: WURS5 },
+          { id: 13, text: '易怒',                                            options: WURS5 },
+          { id: 14, text: '發脾氣、亂發脾氣',                                options: WURS5 },
+          { id: 15, text: '悶悶不樂或情緒陰沉',                              options: WURS5 },
+          { id: 16, text: '與人爭論、好爭辯',                                options: WURS5 },
+          { id: 17, text: '對權威人物（老師、家長）反抗',                    options: WURS5 },
+          { id: 18, text: '不為人接受、不受同儕歡迎',                        options: WURS5 },
+          { id: 19, text: '與其他孩子發生衝突',                              options: WURS5 },
+          { id: 20, text: '在學校惹麻煩',                                    options: WURS5 },
+          { id: 21, text: '蹺課',                                            options: WURS5 },
+          { id: 22, text: '學校成績差，未達應有水準',                        options: WURS5 },
+          { id: 23, text: '閱讀困難',                                        options: WURS5 },
+          { id: 24, text: '行為粗心、衝動、未三思而後行',                    options: WURS5 },
+          { id: 25, text: '常常違規、不守規矩',                              options: WURS5 }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'sum',
+      subscales: [{ id: 'total', name: '總分', questionIds: Array.from({length:25},(_,i)=>i+1) }],
+      interpretation: {
+        subscaleId: 'total',
+        ranges: [
+          { min: 0,  max: 35,  severity: 'low',     label: '童年 ADHD 風險低',     color: '#27ae60', note: '回顧童年症狀少於臨床切點。' },
+          { min: 36, max: 45,  severity: 'borderline', label: '邊緣範圍',          color: '#f39c12', note: '建議綜合其他資訊評估。' },
+          { min: 46, max: 100, severity: 'high',    label: '高度符合童年 ADHD',   color: '#e74c3c', note: '建議搭配 ASRS、臨床晤談進一步評估成人 ADHD。' }
+        ]
+      }
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 10. SNAP-IV 兒童注意力評估量表
   // ─────────────────────────────────────────────
   {
     id: 'snapiv',
