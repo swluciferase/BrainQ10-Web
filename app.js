@@ -94,8 +94,8 @@ function profileComplete() {
 // ─────────────────────────────────────────
 // 首頁渲染
 // ─────────────────────────────────────────
-function renderHome() {
-  const cards = SCALES.map(scale => {
+function renderScaleCards() {
+  return SCALES.map(scale => {
     const st = getScaleStatus(scale);
     const done = S.completedReports[scale.id];
     let badgeCls = 'badge-emotion';
@@ -142,12 +142,54 @@ function renderHome() {
         ${actionHtml}
       </div>`;
   }).join('');
+}
 
-  const noticeHtml = profileComplete() ? '' : `
+function renderProfileNotice() {
+  return profileComplete() ? '' : `
     <div class="profile-notice">
       <span class="profile-notice-icon">💡</span>
       <span>請先填寫左側個人資料（受測者出生日期與填答者關係為必填），系統將自動開放適用的量表。</span>
     </div>`;
+}
+
+function bindScaleCardEvents() {
+  document.querySelectorAll('.scales-grid [data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      if (action === 'start') {
+        S.activeScaleId = id; S.answers = {};
+        S.view = 'questionnaire'; render(); window.scrollTo(0, 0);
+      } else if (action === 'redo') {
+        S.activeScaleId = id; S.answers = {};
+        delete S.completedReports[id];
+        S.view = 'questionnaire'; render(); window.scrollTo(0, 0);
+      } else if (action === 'view-report') {
+        S.activeScaleId = id; S.view = 'report'; render(); window.scrollTo(0, 0);
+      }
+    });
+  });
+}
+
+function refreshScalesInline() {
+  const grid = document.querySelector('.scales-grid');
+  if (grid) grid.innerHTML = renderScaleCards();
+  const panel = document.querySelector('.scales-panel');
+  if (panel) {
+    const oldNotice = panel.querySelector('.profile-notice');
+    if (oldNotice) oldNotice.remove();
+    const noticeHtml = renderProfileNotice();
+    if (noticeHtml) {
+      const title = panel.querySelector('.section-title');
+      if (title) title.insertAdjacentHTML('afterend', noticeHtml);
+    }
+  }
+  bindScaleCardEvents();
+}
+
+function renderHome() {
+  const cards = renderScaleCards();
+  const noticeHtml = renderProfileNotice();
 
   return `
     <div class="view home-layout">
@@ -178,7 +220,7 @@ function renderHome() {
                 <option value="" ${!S.profile.subjectGender ? 'selected' : ''}>請選擇</option>
                 <option value="male"   ${S.profile.subjectGender==='male'   ? 'selected' : ''}>男</option>
                 <option value="female" ${S.profile.subjectGender==='female' ? 'selected' : ''}>女</option>
-                <option value="other"  ${S.profile.subjectGender==='other'  ? 'selected' : ''}>其他</option>
+                <option value="other"  ${S.profile.subjectGender==='other'  ? 'selected' : ''}>第三性</option>
               </select>
             </div>
           </div>
@@ -310,7 +352,7 @@ function renderReport() {
   const scale = SCALES.find(s => s.id === S.activeScaleId);
   const p = S.profile;
 
-  const genderMap = { male:'男', female:'女', other:'其他' };
+  const genderMap = { male:'男', female:'女', other:'第三性' };
   const relMap = { self:'本人', parent:'父母／監護人', teacher:'教師', other:'其他' };
 
   let bodyHtml = '';
@@ -876,14 +918,16 @@ function bindEvents() {
     });
   }
 
-  // DOB → auto-fill age + re-render
+  // DOB → auto-fill age inline, no full re-render
   const dobEl = document.getElementById('f-subjectDOB');
   if (dobEl) {
     dobEl.addEventListener('change', e => {
       S.profile.subjectDOB = e.target.value;
       const age = ageFromDOB(e.target.value);
       S.profile.subjectAge = age;
-      render();
+      const ageEl = document.getElementById('f-subjectAge');
+      if (ageEl) ageEl.value = age ? age + ' 歲' : '';
+      refreshScalesInline();
     });
   }
 
@@ -903,15 +947,17 @@ function bindEvents() {
     });
   }
 
-  // Relationship → re-render + auto-fill name on "self"
+  // Relationship → inline scale refresh + auto-fill name on "self"
   const relEl = document.getElementById('f-respondentRelationship');
   if (relEl) {
     relEl.addEventListener('change', e => {
       S.profile.respondentRelationship = e.target.value;
       if (e.target.value === 'self') {
         S.profile.respondentName = S.profile.subjectName;
+        const respEl = document.getElementById('f-respondentName');
+        if (respEl) respEl.value = S.profile.subjectName;
       }
-      render();
+      refreshScalesInline();
     });
   }
 
@@ -1026,5 +1072,11 @@ function bindEvents() {
 // 初始化
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Bach flower scale ordered first
+  const bachIdx = SCALES.findIndex(s => s.id === 'bach');
+  if (bachIdx > 0) {
+    const [bach] = SCALES.splice(bachIdx, 1);
+    SCALES.unshift(bach);
+  }
   render();
 });
