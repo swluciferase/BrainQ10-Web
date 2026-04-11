@@ -3,31 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ScalarMynd ─ Measuring the depth of your mind</title>
-  <meta name="description" content="ScalarMynd 心理與行為健康評量系統，涵蓋 ADHD、情緒、認知、睡眠、行為健康等多項標準量表">
+  <title>ScalarMynd ─ Measuring the depth of your mind.</title>
+  <meta name="description" content="ScalarMynd 心理與行為健康評量儀：涵蓋 ADHD、情緒、認知、睡眠、行為健康等標準化量表。">
+  <meta name="theme-color" content="#f6f1e4">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Crimson+Pro:ital,wght@1,500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header -->
+  <!-- Decorative page frame: ruler ticks + rules -->
+  <div class="page-frame" aria-hidden="true">
+    <div class="ruler ruler-left"></div>
+    <div class="ruler ruler-right"></div>
+    <div class="frame-corner tl"></div>
+    <div class="frame-corner tr"></div>
+    <div class="frame-corner bl"></div>
+    <div class="frame-corner br"></div>
+    <div class="page-grain"></div>
+  </div>
+
+  <!-- Instrument panel header -->
   <header class="app-header">
-    <a class="header-brand" href="#" onclick="return false;">
-      <div class="header-logo"><span class="logo-glyph">S</span></div>
-      <div class="header-text">
-        <div class="header-title">ScalarMynd</div>
-        <div class="header-subtitle">Measuring the depth of your mind.</div>
+    <div class="header-inner">
+      <a class="header-brand" href="#" onclick="return false;">
+        <div class="header-logo">
+          <span class="logo-glyph">𝒮</span>
+          <span class="logo-index">Nº 07</span>
+        </div>
+        <div class="header-text">
+          <div class="header-title">ScalarMynd<span class="header-trademark">™</span></div>
+          <div class="header-subtitle"><em>Measuring the depth of your mind.</em></div>
+        </div>
+      </a>
+      <div class="header-meta" aria-hidden="true">
+        <div class="header-meta-row">
+          <span class="meta-dot"></span>
+          <span class="meta-label">DEPTH GAUGE</span>
+          <span class="meta-sep">/</span>
+          <span class="meta-label">v1.0</span>
+        </div>
+        <div class="header-meta-row header-meta-sub">
+          <span class="meta-label-soft">MYND SERIES · INSTRUMENT SEVEN</span>
+        </div>
       </div>
-    </a>
+    </div>
+    <div class="header-rule" aria-hidden="true">
+      <span class="tick tick-major"></span>
+      <span class="tick"></span>
+      <span class="tick"></span>
+      <span class="tick"></span>
+      <span class="tick tick-major"></span>
+      <span class="tick"></span>
+      <span class="tick"></span>
+      <span class="tick"></span>
+      <span class="tick tick-major"></span>
+    </div>
   </header>
 
   <!-- App Container -->
   <main class="app-main">
     <div id="app">
-      <div style="text-align:center; padding:60px; color:#7f8c8d">載入中…</div>
+      <div class="boot-wrap">
+        <div class="boot-glyph">𝒮</div>
+        <div class="boot-label">Calibrating depth gauge…</div>
+        <div class="boot-rule"></div>
+      </div>
     </div>
   </main>
+
+  <!-- Footer signature -->
+  <footer class="app-footer" aria-hidden="true">
+    <div class="footer-inner">
+      <span class="footer-cell">ScalarMynd / INSTRUMENT N°07</span>
+      <span class="footer-cell footer-quote"><em>“Measuring the depth of your mind.”</em></span>
+      <span class="footer-cell">MYND SERIES — ARTISEBIO</span>
+    </div>
+  </footer>
 
   <!-- Scripts -->
   <script src="scales.js"></script>
