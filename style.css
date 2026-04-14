@@ -220,10 +220,11 @@ em { font-style: italic; }
 .logo-glyph {
   font-family: var(--font-display);
   font-style: italic;
-  font-weight: 400;
+  font-weight: 300;
   font-optical-sizing: auto;
-  font-size: 64px;
+  font-size: 52px;
   line-height: 1;
+  letter-spacing: -.04em;
   color: var(--sapphire);
   margin-top: 4px;
   font-variation-settings: "SOFT" 100, "opsz" 144;
@@ -344,9 +345,11 @@ em { font-style: italic; }
 .boot-glyph {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 88px;
+  font-weight: 300;
+  font-size: 72px;
   color: var(--sapphire);
   line-height: 1;
+  letter-spacing: -.04em;
   font-variation-settings: "SOFT" 100, "opsz" 144;
   animation: breathe 3s ease-in-out infinite;
 }
@@ -1090,16 +1093,17 @@ select option { background: var(--paper-hi); color: var(--ink); }
   overflow: hidden;
 }
 .report-container::before {
-  content: '𝒮';
+  content: 'Sc';
   position: absolute;
   top: -60px;
   right: -30px;
   font-family: var(--font-display);
   font-style: italic;
-  font-weight: 400;
+  font-weight: 300;
   font-variation-settings: "SOFT" 100, "opsz" 144;
-  font-size: 420px;
+  font-size: 340px;
   line-height: 1;
+  letter-spacing: -.04em;
   color: var(--sapphire);
   opacity: .04;
   pointer-events: none;
@@ -1127,15 +1131,15 @@ select option { background: var(--paper-hi); color: var(--ink); }
   gap: 12px;
 }
 .report-brand::before {
-  content: '𝒮';
+  content: 'Sc';
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 22px;
-  font-weight: 400;
+  font-size: 20px;
+  font-weight: 300;
   color: var(--sapphire);
   line-height: 1;
   font-variation-settings: "SOFT" 100, "opsz" 144;
-  letter-spacing: 0;
+  letter-spacing: -.04em;
   text-transform: none;
 }
 
@@ -1484,7 +1488,7 @@ select option { background: var(--paper-hi); color: var(--ink); }
   .app-footer { padding: 20px 22px 28px; }
   .header-title { font-size: 34px; }
   .header-logo { width: 76px; height: 76px; }
-  .logo-glyph { font-size: 52px; }
+  .logo-glyph { font-size: 42px; }
   .section-title { font-size: 28px; }
   .q-header { padding: 22px 20px; }
   .q-title-area h2 { font-size: 26px; }
