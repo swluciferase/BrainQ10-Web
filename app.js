@@ -11,13 +11,16 @@ const S = {
     subjectAge: '',
     subjectDOB: '',
     subjectGender: '',
+    subjectPhone: '',
+    subjectEmail: '',
     respondentName: '',
     respondentRelationship: '', // self | parent | teacher | other
     assessmentDate: todayStr()
   },
   activeScaleId: null,
   answers: {},           // { questionId: value }
-  completedReports: {}   // { scaleId: reportData }
+  completedReports: {},  // { scaleId: reportData }
+  subjectSynced: false   // true once contact info has been pushed to backend in this session
 };
 
 function todayStr() {
@@ -56,6 +59,10 @@ function render() {
 // ─────────────────────────────────────────
 // 工具：量表適用判斷
 // ─────────────────────────────────────────
+function isProjectLaunched() {
+  return !!(window.ScalarMyndAPI && window.ScalarMyndAPI.isProjectLaunched && window.ScalarMyndAPI.isProjectLaunched());
+}
+
 function getScaleStatus(scale) {
   const age = parseInt(S.profile.subjectAge);
   const rel = S.profile.respondentRelationship;
@@ -63,11 +70,18 @@ function getScaleStatus(scale) {
   if (!S.profile.subjectDOB && !S.profile.respondentRelationship) {
     return { enabled: false, reason: '請先填寫出生日期與填答者關係' };
   }
+  if (!S.profile.subjectName) {
+    return { enabled: false, reason: '請先填寫受測者姓名' };
+  }
   if (!S.profile.subjectDOB || !S.profile.subjectAge) {
     return { enabled: false, reason: '請先填寫受測者出生日期' };
   }
   if (!S.profile.respondentRelationship) {
     return { enabled: false, reason: '請先填寫填答者與本人關係' };
+  }
+  if (isProjectLaunched()) {
+    if (!S.profile.subjectPhone) return { enabled: false, reason: '請先填寫聯絡電話' };
+    if (!S.profile.subjectEmail) return { enabled: false, reason: '請先填寫聯絡信箱' };
   }
 
   const c = scale.criteria;
@@ -88,7 +102,10 @@ function getScaleStatus(scale) {
 
 function profileComplete() {
   const p = S.profile;
-  return p.subjectName && p.subjectDOB && p.subjectAge && p.respondentRelationship;
+  const base = p.subjectName && p.subjectDOB && p.subjectAge && p.respondentRelationship;
+  if (!base) return false;
+  if (isProjectLaunched()) return !!(p.subjectPhone && p.subjectEmail);
+  return true;
 }
 
 // ─────────────────────────────────────────
@@ -152,11 +169,43 @@ function renderProfileNotice() {
     </div>`;
 }
 
+// Re-read form fields from the DOM and update S.profile. Runs before any
+// scale action so that iPad Safari date-picker quirks (where `change` may
+// not fire on a second edit) cannot leave the state stale.
+function syncProfileFromDOM() {
+  const dob = document.getElementById('f-subjectDOB');
+  if (dob && dob.value && dob.value !== S.profile.subjectDOB) {
+    S.profile.subjectDOB = dob.value;
+    S.profile.subjectAge = ageFromDOB(dob.value);
+    const ageEl = document.getElementById('f-subjectAge');
+    if (ageEl) ageEl.value = S.profile.subjectAge ? S.profile.subjectAge + ' 歲' : '';
+  }
+  const name = document.getElementById('f-subjectName');
+  if (name && name.value !== S.profile.subjectName) S.profile.subjectName = name.value;
+  const gender = document.getElementById('f-subjectGender');
+  if (gender && gender.value !== S.profile.subjectGender) S.profile.subjectGender = gender.value;
+  const phone = document.getElementById('f-subjectPhone');
+  if (phone && phone.value.trim() !== S.profile.subjectPhone) S.profile.subjectPhone = phone.value.trim();
+  const email = document.getElementById('f-subjectEmail');
+  if (email && email.value.trim() !== S.profile.subjectEmail) S.profile.subjectEmail = email.value.trim();
+  const rel = document.getElementById('f-respondentRelationship');
+  if (rel && rel.value !== S.profile.respondentRelationship) S.profile.respondentRelationship = rel.value;
+}
+
 function bindScaleCardEvents() {
   document.querySelectorAll('.scales-grid [data-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.action;
       const id = btn.dataset.id;
+      // Re-read DOM in case iPad Safari ate a date-picker change event.
+      // If profile state was stale and the click no longer satisfies criteria,
+      // refresh the cards so the user sees the correct lock reason.
+      syncProfileFromDOM();
+      if (action === 'start' || action === 'redo') {
+        const scale = SCALES.find(s => s.id === id);
+        const st = scale ? getScaleStatus(scale) : { enabled: false };
+        if (!st.enabled) { refreshScalesInline(); return; }
+      }
       if (action === 'start') {
         S.activeScaleId = id; S.answers = {};
         S.view = 'questionnaire'; render(); window.scrollTo(0, 0);
@@ -224,6 +273,15 @@ function renderHome() {
               </select>
             </div>
           </div>
+          ${isProjectLaunched() ? `
+          <div class="form-group">
+            <label>聯絡電話 <span style="color:#e74c3c">*</span></label>
+            <input type="tel" id="f-subjectPhone" value="${esc(S.profile.subjectPhone)}" placeholder="例：0912345678" autocomplete="tel">
+          </div>
+          <div class="form-group">
+            <label>聯絡信箱 <span style="color:#e74c3c">*</span></label>
+            <input type="email" id="f-subjectEmail" value="${esc(S.profile.subjectEmail)}" placeholder="example@email.com" autocomplete="email">
+          </div>` : ''}
 
           <div class="profile-divider">填答者資料</div>
           <div class="form-group">
@@ -241,8 +299,8 @@ function renderHome() {
             </select>
           </div>
           <div class="form-group">
-            <label>評估日期</label>
-            <input type="text" id="f-assessmentDate" value="${esc(S.profile.assessmentDate)}" placeholder="${todayStr()}">
+            <label>評估日期（測驗當日自動帶入）</label>
+            <input type="text" id="f-assessmentDate" value="${esc(S.profile.assessmentDate)}" readonly>
           </div>
         </div>
       </aside>
@@ -345,6 +403,90 @@ function renderQuestionnaire() {
 // ─────────────────────────────────────────
 // 報告渲染
 // ─────────────────────────────────────────
+// Build standalone HTML report containing every completed scale, with embedded
+// CSS so admins can open it in any browser. Used when sending to backend
+// (finalize → R2 → admin "報告" download button).
+function buildReportHTML() {
+  const ids = Object.keys(S.completedReports);
+  if (!ids.length) return null;
+  const p = S.profile;
+  const genderMap = { male:'男', female:'女', other:'第三性' };
+  const relMap = { self:'本人', parent:'父母／監護人', teacher:'教師', other:'其他' };
+  const prevId = S.activeScaleId;
+  const sections = ids.map(id => {
+    S.activeScaleId = id;
+    const scale = SCALES.find(s => s.id === id);
+    if (!scale) return '';
+    const report = S.completedReports[id];
+    let body = '';
+    if (scale.scoring.type === 'sum')               body = renderSumReport(report, scale);
+    else if (scale.scoring.type === 'subscale_sum') body = renderSubscaleSumReport(report, scale);
+    else if (scale.scoring.type === 'subscale_avg') body = renderSubscaleAvgReport(report, scale);
+    else if (scale.scoring.type === 'vanderbilt')   body = renderVanderbiltReport(report, scale);
+    else if (scale.scoring.type === 'bach')         body = renderBachReport(report, scale);
+    else if (scale.scoring.type === 'mdq')          body = renderMdqReport(report, scale);
+    else if (scale.scoring.type === 'audit')        body = renderAuditReport(report, scale);
+    const flags = (report.flags || []).map(f => `<div class="report-flag">⚠️ ${f.message}</div>`).join('');
+    return `
+      <section class="report-section-doc">
+        <h2 class="report-scale-name">${scale.fullName}</h2>
+        ${flags}
+        ${body}
+      </section>`;
+  });
+  S.activeScaleId = prevId;
+  const styles = `
+    body { font-family: -apple-system, "Helvetica Neue", "PingFang TC", "Noto Sans TC", sans-serif; background:#f7f5ee; color:#1f1d1a; margin:0; padding:24px; }
+    .doc-wrap { max-width: 880px; margin: 0 auto; background: #fff; padding: 32px 36px; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    .doc-header { border-bottom: 1px solid #e5e1d6; padding-bottom: 16px; margin-bottom: 24px; }
+    .doc-brand { font-weight: 700; font-size: 1.1rem; letter-spacing: .04em; color: #2c3e50; }
+    .doc-subtitle { color: #6b6b6b; font-size: .85rem; margin-top: 4px; font-style: italic; }
+    .doc-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 16px; margin-top: 12px; font-size: .85rem; color: #444; }
+    .doc-meta strong { color: #1f1d1a; font-weight: 600; }
+    .report-section-doc { margin-bottom: 32px; padding-top: 8px; border-top: 1px solid #eee; }
+    .report-section-doc:first-of-type { border-top: none; padding-top: 0; }
+    .report-scale-name { font-size: 1.15rem; color: #2c3e50; margin: 12px 0 14px; }
+    .report-summary { padding: 12px 16px; border-radius: 8px; border: 1.5px solid #ddd; margin: 8px 0 14px; }
+    .report-summary-label { font-size: .75rem; opacity: .7; margin-bottom: 4px; }
+    .report-summary-result { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+    .report-summary-score { font-size: .9rem; margin-bottom: 4px; }
+    .report-summary-note { font-size: .8rem; opacity: .85; line-height: 1.5; }
+    .report-section { margin: 14px 0; }
+    .report-section-title { font-weight: 600; font-size: .92rem; margin-bottom: 8px; color: #2c3e50; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #faf8f0; font-weight: 600; }
+    .mini-bar { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; min-width: 80px; }
+    .mini-bar-fill { height: 100%; }
+    .dsm-badge { padding: 2px 8px; border-radius: 4px; font-size: .75rem; font-weight: 600; }
+    .report-flag { background: #fff3e0; border-left: 3px solid #f59e0b; padding: 8px 12px; margin: 8px 0; font-size: .85rem; color: #92400e; border-radius: 4px; }
+    .disclaimer { font-size: .75rem; color: #888; line-height: 1.6; margin-top: 24px; padding-top: 14px; border-top: 1px dashed #ddd; }
+  `;
+  return `<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8"><title>ScalarMynd 評估報告 — ${esc(p.subjectName) || ''}</title>
+<style>${styles}</style></head><body>
+  <div class="doc-wrap">
+    <div class="doc-header">
+      <div class="doc-brand">ScalarMynd ─ Measuring the depth of your mind</div>
+      <div class="doc-subtitle">心理與行為健康評量報告</div>
+      <div class="doc-meta">
+        <div>受測者：<strong>${esc(p.subjectName) || '─'}</strong></div>
+        <div>性別：<strong>${genderMap[p.subjectGender] || '─'}</strong></div>
+        <div>年齡：<strong>${p.subjectAge ? p.subjectAge + ' 歲' : '─'}</strong></div>
+        <div>出生日期：<strong>${esc(p.subjectDOB) || '─'}</strong></div>
+        <div>填答者：<strong>${esc(p.respondentName) || '─'}</strong></div>
+        <div>關係：<strong>${relMap[p.respondentRelationship] || '─'}</strong></div>
+        <div>聯絡電話：<strong>${esc(p.subjectPhone) || '─'}</strong></div>
+        <div>聯絡信箱：<strong>${esc(p.subjectEmail) || '─'}</strong></div>
+        <div>評估日期：<strong>${esc(p.assessmentDate)}</strong></div>
+      </div>
+    </div>
+    ${sections.join('')}
+    <p class="disclaimer">本報告結果僅供參考，不構成任何診斷依據。如有相關疑慮，請洽專業醫師或臨床心理師進行完整評估。</p>
+  </div>
+</body></html>`;
+}
+
 function renderReport() {
   const report = S.completedReports[S.activeScaleId];
   if (!report) return '<p>錯誤：找不到報告</p>';
@@ -918,17 +1060,26 @@ function bindEvents() {
     });
   }
 
-  // DOB → auto-fill age inline, no full re-render
+  // DOB → auto-fill age inline, no full re-render.
+  // iPad Safari quirk: when the same date input is opened twice (e.g. user
+  // first picks an out-of-range date then corrects it), the second commit may
+  // fire only `input` (not `change`). Bind all three events so we always
+  // capture the latest value.
   const dobEl = document.getElementById('f-subjectDOB');
   if (dobEl) {
-    dobEl.addEventListener('change', e => {
-      S.profile.subjectDOB = e.target.value;
-      const age = ageFromDOB(e.target.value);
+    const syncDOB = () => {
+      const v = dobEl.value || '';
+      if (v === S.profile.subjectDOB) return; // no-op debounce
+      S.profile.subjectDOB = v;
+      const age = ageFromDOB(v);
       S.profile.subjectAge = age;
       const ageEl = document.getElementById('f-subjectAge');
       if (ageEl) ageEl.value = age ? age + ' 歲' : '';
       refreshScalesInline();
-    });
+    };
+    dobEl.addEventListener('change', syncDOB);
+    dobEl.addEventListener('input', syncDOB);
+    dobEl.addEventListener('blur', syncDOB);
   }
 
   // Gender
@@ -936,6 +1087,23 @@ function bindEvents() {
   if (genderEl) {
     genderEl.addEventListener('change', e => {
       S.profile.subjectGender = e.target.value;
+      refreshScalesInline();
+    });
+  }
+
+  // Phone / Email (only present when project-launched; both required)
+  const phoneEl = document.getElementById('f-subjectPhone');
+  if (phoneEl) {
+    phoneEl.addEventListener('input', e => {
+      S.profile.subjectPhone = e.target.value.trim();
+      refreshScalesInline();
+    });
+  }
+  const emailEl = document.getElementById('f-subjectEmail');
+  if (emailEl) {
+    emailEl.addEventListener('input', e => {
+      S.profile.subjectEmail = e.target.value.trim();
+      refreshScalesInline();
     });
   }
 
@@ -961,12 +1129,11 @@ function bindEvents() {
     });
   }
 
-  // Assessment date
+  // Assessment date is read-only; always reflects today
   const dateEl = document.getElementById('f-assessmentDate');
   if (dateEl) {
-    dateEl.addEventListener('input', e => {
-      S.profile.assessmentDate = e.target.value;
-    });
+    S.profile.assessmentDate = todayStr();
+    dateEl.value = S.profile.assessmentDate;
   }
 
   // Scale action buttons
@@ -976,12 +1143,22 @@ function bindEvents() {
       const id = btn.dataset.id;
 
       if (action === 'start') {
+        syncProfileFromDOM();
+        const scale = SCALES.find(s => s.id === id);
+        const st = scale ? getScaleStatus(scale) : { enabled: false };
+        if (!st.enabled) { refreshScalesInline(); return; }
+        if (!ensureSubjectSynced()) return;
         S.activeScaleId = id;
         S.answers = {};
         S.view = 'questionnaire';
         render();
         window.scrollTo(0, 0);
       } else if (action === 'redo') {
+        syncProfileFromDOM();
+        const scale = SCALES.find(s => s.id === id);
+        const st = scale ? getScaleStatus(scale) : { enabled: false };
+        if (!st.enabled) { refreshScalesInline(); return; }
+        if (!ensureSubjectSynced()) return;
         S.activeScaleId = id;
         S.answers = {};
         delete S.completedReports[id];
@@ -1001,6 +1178,32 @@ function bindEvents() {
         const scale = SCALES.find(s => s.id === S.activeScaleId);
         const report = calculateScore(scale, S.answers);
         S.completedReports[S.activeScaleId] = report;
+        // Finalize when project-launched: lazy-creates DB rows on first call,
+        // updates existing session on subsequent calls. Subject info travels
+        // with the request so the test_session row appears in admin only after
+        // the user actually completes a scale (not on QR scan).
+        if (window.ScalarMyndAPI && isProjectLaunched()) {
+          const p = S.profile;
+          const g = p.subjectGender === 'male' ? 'M' : p.subjectGender === 'female' ? 'F' : 'O';
+          let reportHtml = null;
+          try { reportHtml = buildReportHTML(); } catch {}
+          try {
+            window.ScalarMyndAPI.finalize({
+              name:       p.subjectName,
+              gender:     g,
+              birth_date: p.subjectDOB,
+              phone:      p.subjectPhone,
+              email:      p.subjectEmail,
+              report_html: reportHtml,
+              results: {
+                profile: { ...S.profile },
+                scaleId: S.activeScaleId,
+                report,
+                completedReports: S.completedReports,
+              },
+            });
+          } catch {}
+        }
         S.view = 'report';
         render();
         window.scrollTo(0, 0);
@@ -1071,12 +1274,64 @@ function bindEvents() {
 // ─────────────────────────────────────────
 // 初始化
 // ─────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+// Validate subject info before allowing scale start (project-launched only).
+// No backend write happens here — DB rows are lazily created by finalize() on
+// scale completion, so an unfinished test leaves zero trace in admin.
+function ensureSubjectSynced() {
+  if (!isProjectLaunched()) return true;
+  const p = S.profile;
+  if (!p.subjectName)   { alert('請先填寫受測者姓名'); return false; }
+  if (!p.subjectDOB)    { alert('請先填寫受測者出生日期'); return false; }
+  if (!p.subjectPhone)  { alert('請先填寫聯絡電話'); return false; }
+  if (!p.subjectEmail)  { alert('請先填寫聯絡信箱'); return false; }
+  return true;
+}
+
+function applyProjectFilter() {
+  if (!window.ScalarMyndAPI) return;
+  const allowed = window.ScalarMyndAPI.getProjectFilter();
+  if (!allowed) return;
+  const set = new Set(allowed);
+  // Mutate in place so other code paths (find / findIndex) keep working.
+  for (let i = SCALES.length - 1; i >= 0; i--) {
+    if (!set.has(SCALES[i].id)) SCALES.splice(i, 1);
+  }
+}
+
+function applySessionPrefill() {
+  if (!window.ScalarMyndAPI) return;
+  const s = window.ScalarMyndAPI.getSession();
+  if (!s) return;
+  if (s.name)      S.profile.subjectName   = s.name;
+  if (s.subjectId) S.profile.subjectId     = s.subjectId;
+  if (s.gender) {
+    const g = String(s.gender).toLowerCase();
+    if (g === 'm' || g === 'male')   S.profile.subjectGender = 'male';
+    else if (g === 'f' || g === 'female') S.profile.subjectGender = 'female';
+    else if (g)                       S.profile.subjectGender = 'other';
+  }
+  if (s.birthDate) {
+    S.profile.subjectDOB = s.birthDate;
+    const a = ageFromDOB(s.birthDate);
+    if (a) S.profile.subjectAge = a;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   // Bach flower scale ordered first
   const bachIdx = SCALES.findIndex(s => s.id === 'bach');
   if (bachIdx > 0) {
     const [bach] = SCALES.splice(bachIdx, 1);
     SCALES.unshift(bach);
+  }
+  // Optional artisebio backend bridge — when launched via project QR, this
+  // pulls session info (name/DOB/gender) and the scalar.scales filter.
+  if (window.ScalarMyndAPI) {
+    try {
+      await window.ScalarMyndAPI.init();
+      applyProjectFilter();
+      applySessionPrefill();
+    } catch {}
   }
   render();
 });
