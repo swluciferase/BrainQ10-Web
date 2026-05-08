@@ -1315,6 +1315,13 @@ function applySessionPrefill() {
     const a = ageFromDOB(s.birthDate);
     if (a) S.profile.subjectAge = a;
   }
+  // Pre-fill contact info when the operator pre-loaded the subject in
+  // /my-projects/:id. Without this the operator has to re-type phone +
+  // email at the venue even though they already entered both. Both fields
+  // are required on the profile form for project-launched sessions, so
+  // populating them here also unblocks the "begin assessment" gate.
+  if (s.phone) S.profile.subjectPhone = s.phone;
+  if (s.email) S.profile.subjectEmail = s.email;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

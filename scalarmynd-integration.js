@@ -54,6 +54,12 @@
         gender:        d.gender || '',
         birthDate:     d.birth_date || null,
         subjectId:     d.subject_id || null,
+        // Phone + email pulled from clients row by the worker so ScalarMynd's
+        // profile form can pre-fill them when the operator pre-loaded the
+        // subject from /my-projects (issue 2026-05-09: contact info was being
+        // dropped on the floor between launch and the participant's screen).
+        phone:         d.phone || '',
+        email:         d.email || '',
         notes:         d.notes || null,
         // Server returns parsed app_options snapshot when set on join.
         app_options:   (d.app_options && typeof d.app_options === 'object') ? d.app_options : null,
