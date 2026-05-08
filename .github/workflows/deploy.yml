@@ -11,8 +11,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy to Cloudflare Pages
+        # 2026-05-09: pin wranglerVersion. Without it the action picked
+        # wrangler 3.90 which doesn't honor the action's `apiToken` input
+        # (reads CLOUDFLARE_API_TOKEN env var only) — every push since
+        # 2026-04-29 silently failed in CI. Aligned with Animal-CPT-Web's
+        # working workflow at the same wrangler 4.81.1 baseline.
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: 4843444dc162127165cf6382697234ea
-          command: pages deploy . --project-name brainq10-web
+          apiToken:        ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:       4843444dc162127165cf6382697234ea
+          wranglerVersion: '4.81.1'
+          command: pages deploy . --project-name=brainq10-web --commit-dirty=true --commit-hash=${{ github.sha }}
