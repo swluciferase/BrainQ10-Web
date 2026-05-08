@@ -610,7 +610,11 @@ const SCALES = [
     description: '兒童ADHD及對立反抗評估量表（26題），由家長或教師依據孩子平時表現填寫。來源：akai.org.tw 中文版常模（劉昱志等，2006）',
     category: 'ADHD評估（兒童）',
     estimatedMinutes: 12,
-    criteria: { minAge: 6, maxAge: 13, roles: ['parent', 'teacher'] },
+    // minAge lowered from 6 → 4 by user instruction (2026-05-09). SNAP-IV's
+    // original validation pool is 6–12, but akai.org.tw's Chinese norm is
+    // routinely applied to 4–5-yo by clinicians screening preschool ADHD;
+    // operator-side use case requires this lower bound.
+    criteria: { minAge: 4, maxAge: 13, roles: ['parent', 'teacher'] },
     instructions: '根據孩子的平時表現，請選擇最符合孩子狀況的選項：',
     sections: [
       {
