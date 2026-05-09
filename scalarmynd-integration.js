@@ -18,13 +18,33 @@
   const listeners = new Set();
 
   function getSessionToken(){
+    const found = readSessionTokenWithSource();
+    return found ? found.token : null;
+  }
+
+  // Source-aware: cameViaUrl=true means user explicitly arrived via project link;
+  // false means we read it from the steeg_session cookie (could be stale pollution
+  // from a previously completed/expired session).
+  function readSessionTokenWithSource(){
     const fromUrl = new URLSearchParams(location.search).get('session_token');
     if (fromUrl) {
       try { document.cookie = `steeg_session=${encodeURIComponent(fromUrl)}; path=/; max-age=86400`; } catch{}
-      return fromUrl;
+      return { token: fromUrl, cameViaUrl: true };
     }
     const m = document.cookie.match(/(?:^|;\s*)steeg_session=([^;]+)/);
-    return m ? decodeURIComponent(m[1]) : null;
+    if (m) return { token: decodeURIComponent(m[1]), cameViaUrl: false };
+    return null;
+  }
+
+  // Clear stale steeg_session cookie at every Path the proxy / this file may
+  // have set it on. Belt-and-suspenders: line 23 writes path=/, but the proxy
+  // writes Path=/scalarmynd/, so we must wipe both.
+  function clearStaleSessionCookie(){
+    try {
+      document.cookie = 'steeg_session=; path=/; Max-Age=0; Secure; SameSite=Lax';
+      document.cookie = 'steeg_session=; Path=/scalarmynd/; Max-Age=0; Secure; SameSite=Lax';
+      document.cookie = 'steeg_session=; Path=/scalarmynd; Max-Age=0; Secure; SameSite=Lax';
+    } catch (e) { /* ignore */ }
   }
 
   function getAuthToken(){
@@ -98,9 +118,24 @@
       else if (stored.plan && stored.plan !== 'none') plan = stored.plan;
     }
 
-    const token = getSessionToken();
+    const src = readSessionTokenWithSource();
     const tasks = [];
-    if (token) tasks.push(fetchSession(token).then(s => { sessionInfo = s; }));
+    if (src) tasks.push(fetchSession(src.token).then(s => {
+      if (s) {
+        sessionInfo = s;
+      } else if (!src.cameViaUrl) {
+        // Stale steeg_session cookie pollution from a previous project session.
+        // Silently clear it so subsequent loads don't re-validate the same
+        // dead token. User proceeds in standalone mode.
+        clearStaleSessionCookie();
+        sessionInfo = null;
+      } else {
+        // URL-token failure: leave sessionInfo null; UI gates on
+        // isProjectLaunched() which already returns false. No error banner
+        // is shown today, so callers see standalone-mode behavior.
+        sessionInfo = null;
+      }
+    }));
     tasks.push(fetchMe().then(u => {
       userInfo = u;
       if (u){
