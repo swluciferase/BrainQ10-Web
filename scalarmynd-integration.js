@@ -47,8 +47,16 @@
     } catch (e) { /* ignore */ }
   }
 
+  // AUD-018 (2026-05-30): H7 regression fix — read steeg_token from the
+  // cookie set by main.js after login instead of localStorage. localStorage
+  // is XSS-readable; the cookie is also JS-readable but cookies + Secure +
+  // SameSite Lax + same-origin policy keep the risk surface smaller and
+  // align this app with the rest of the sub-apps.
   function getAuthToken(){
-    try { return localStorage.getItem('steeg_token'); } catch { return null; }
+    try {
+      const m = document.cookie.match(/(?:^|;\s*)steeg_token=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch { return null; }
   }
   function authHeaders(){
     const t = getAuthToken();
