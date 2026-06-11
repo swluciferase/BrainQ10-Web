@@ -102,7 +102,7 @@ function getScaleStatus(scale) {
 
 function profileComplete() {
   const p = S.profile;
-  const base = p.subjectName && p.subjectDOB && p.subjectAge && p.respondentRelationship;
+  const base = p.subjectName && p.subjectDOB && p.subjectAge && p.subjectGender && p.respondentRelationship;
   if (!base) return false;
   if (isProjectLaunched()) return !!(p.subjectPhone && p.subjectEmail);
   return true;
@@ -1282,6 +1282,7 @@ function ensureSubjectSynced() {
   const p = S.profile;
   if (!p.subjectName)   { alert('請先填寫受測者姓名'); return false; }
   if (!p.subjectDOB)    { alert('請先填寫受測者出生日期'); return false; }
+  if (!p.subjectGender) { alert('請先選擇受測者性別'); return false; }
   if (!p.subjectPhone)  { alert('請先填寫聯絡電話'); return false; }
   if (!p.subjectEmail)  { alert('請先填寫聯絡信箱'); return false; }
   return true;
