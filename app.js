@@ -532,6 +532,8 @@ function renderReport() {
             <div class="report-meta-item">性別：<strong>${genderMap[p.subjectGender] || '─'}</strong></div>
             <div class="report-meta-item">填答者：<strong>${esc(p.respondentName) || '─'}</strong></div>
             <div class="report-meta-item">關係：<strong>${relMap[p.respondentRelationship] || '─'}</strong></div>
+            <div class="report-meta-item">聯絡電話：<strong>${esc(p.subjectPhone) || '─'}</strong></div>
+            <div class="report-meta-item">聯絡信箱：<strong>${esc(p.subjectEmail) || '─'}</strong></div>
             <div class="report-meta-item">評估日期：<strong>${esc(p.assessmentDate)}</strong></div>
           </div>
         </div>
