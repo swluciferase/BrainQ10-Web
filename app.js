@@ -171,7 +171,7 @@ function renderScaleCards() {
     return `
       <div class="scale-card ${st.enabled ? (done ? 'completed' : 'enabled') : 'disabled'}" data-id="${scale.id}">
         <div class="scale-card-badge ${badgeCls}">${TR(scale.category)}</div>
-        <div class="scale-card-name">${scale.name}</div>
+        <div class="scale-card-name">${TR(scale.name)}</div>
         <div class="scale-card-full">${TR(scale.fullName)}</div>
         <div class="scale-card-desc">${TR(scale.description)}</div>
         <div class="scale-card-meta">
