@@ -1509,3 +1509,29 @@ select option { background: var(--paper-hi); color: var(--ink); }
   .score-bar-cell { min-width: 80px; }
   .btn-print, .btn-new-scale { flex: 1; text-align: center; }
 }
+
+/* ── i18n language switcher (header) ─────────────────────────── */
+.header-lang { display: flex; align-items: center; margin-right: 14px; }
+.header-lang select {
+  min-height: 38px;
+  font-size: 0.9rem;
+  font-family: 'Noto Sans TC', system-ui, sans-serif;
+  padding: 4px 28px 4px 12px;
+  border: 1px solid var(--rule, #cbb89a);
+  border-radius: 6px;
+  background: var(--paper-raised, #fbf7ec);
+  color: var(--ink-primary, #2a2722);
+  cursor: pointer;
+  letter-spacing: .02em;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%237a6f5c' fill='none' stroke-width='1.4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.header-lang select:hover { border-color: var(--ink-muted, #8a7d68); }
+.header-lang select:focus { outline: 2px solid var(--accent, #b9985a); outline-offset: 1px; }
+@media (max-width: 640px) {
+  .header-lang { margin-right: 8px; }
+  .header-lang select { min-height: 36px; font-size: 0.82rem; padding: 3px 24px 3px 9px; }
+}

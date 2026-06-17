@@ -46,6 +46,29 @@ function ageFromDOB(iso) {
 }
 
 // ─────────────────────────────────────────
+// i18n display resolvers (zh source-of-truth + dict in i18n-data.js)
+// ─────────────────────────────────────────
+// TR(zhString): resolve a Traditional-Chinese display string to the current
+// language via window.SCALE_TR. Unknown strings fall through unchanged, so
+// wrapping is always safe. Scoring/logic keep using the raw zh strings.
+function TR(s) {
+  if (s == null) return '';
+  var lang = (window.I18N && I18N.lang) || 'zh';
+  if (lang === 'zh') return s;
+  var m = window.SCALE_TR && window.SCALE_TR[s];
+  if (!m) return s;
+  if (lang === 'zh-Hans') return m.hans != null ? m.hans : s;
+  if (lang === 'en') return m.en != null ? m.en : (m.hans != null ? m.hans : s);
+  return s;
+}
+// L3(zh, hans, en): inline 3-way for interpolated templates that can't be a
+// single dict key (word order differs across languages).
+function L3(zh, hans, en) {
+  var lang = (window.I18N && I18N.lang) || 'zh';
+  return lang === 'en' ? en : lang === 'zh-Hans' ? hans : zh;
+}
+
+// ─────────────────────────────────────────
 // 主入口
 // ─────────────────────────────────────────
 function render() {
@@ -68,33 +91,33 @@ function getScaleStatus(scale) {
   const rel = S.profile.respondentRelationship;
 
   if (!S.profile.subjectDOB && !S.profile.respondentRelationship) {
-    return { enabled: false, reason: '請先填寫出生日期與填答者關係' };
+    return { enabled: false, reason: TR('請先填寫出生日期與填答者關係') };
   }
   if (!S.profile.subjectName) {
-    return { enabled: false, reason: '請先填寫受測者姓名' };
+    return { enabled: false, reason: TR('請先填寫受測者姓名') };
   }
   if (!S.profile.subjectDOB || !S.profile.subjectAge) {
-    return { enabled: false, reason: '請先填寫受測者出生日期' };
+    return { enabled: false, reason: TR('請先填寫受測者出生日期') };
   }
   if (!S.profile.respondentRelationship) {
-    return { enabled: false, reason: '請先填寫填答者與本人關係' };
+    return { enabled: false, reason: TR('請先填寫填答者與本人關係') };
   }
   if (isProjectLaunched()) {
-    if (!S.profile.subjectPhone) return { enabled: false, reason: '請先填寫聯絡電話' };
-    if (!S.profile.subjectEmail) return { enabled: false, reason: '請先填寫聯絡信箱' };
+    if (!S.profile.subjectPhone) return { enabled: false, reason: TR('請先填寫聯絡電話') };
+    if (!S.profile.subjectEmail) return { enabled: false, reason: TR('請先填寫聯絡信箱') };
   }
 
   const c = scale.criteria;
   if (c.minAge && age < c.minAge) {
-    return { enabled: false, reason: `此量表適用 ${c.minAge} 歲以上` };
+    return { enabled: false, reason: L3(`此量表適用 ${c.minAge} 歲以上`, `此量表适用 ${c.minAge} 岁以上`, `For ages ${c.minAge} and above`) };
   }
   if (c.maxAge && age > c.maxAge) {
-    return { enabled: false, reason: `此量表適用 ${c.minAge}–${c.maxAge} 歲` };
+    return { enabled: false, reason: L3(`此量表適用 ${c.minAge}–${c.maxAge} 歲`, `此量表适用 ${c.minAge}–${c.maxAge} 岁`, `For ages ${c.minAge}–${c.maxAge}`) };
   }
   if (c.roles && !c.roles.includes(rel)) {
-    const roleMap = { self:'本人', parent:'父母/監護人', teacher:'教師', other:'其他' };
-    const required = c.roles.map(r => roleMap[r] || r).join(' 或 ');
-    return { enabled: false, reason: `此量表需由${required}填寫` };
+    const roleMap = { self: TR('本人'), parent: TR('父母/監護人'), teacher: TR('教師'), other: TR('其他') };
+    const required = c.roles.map(r => roleMap[r] || r).join(L3(' 或 ', ' 或 ', ' or '));
+    return { enabled: false, reason: L3(`此量表需由${required}填寫`, `此量表需由${required}填写`, `Must be completed by ${required}`) };
   }
 
   return { enabled: true };
@@ -121,12 +144,12 @@ function renderScaleCards() {
     else if (scale.category.includes('行為')) badgeCls = 'badge-behavior';
 
     const rolesLabel = (scale.criteria.roles || []).map(r =>
-      ({self:'本人',parent:'家長',teacher:'教師',other:'其他'}[r])
+      ({self:TR('本人'),parent:TR('家長'),teacher:TR('教師'),other:TR('其他')}[r])
     ).join('／');
 
     const ageLabel = scale.criteria.maxAge
-      ? `${scale.criteria.minAge}–${scale.criteria.maxAge} 歲`
-      : `${scale.criteria.minAge} 歲以上`;
+      ? L3(`${scale.criteria.minAge}–${scale.criteria.maxAge} 歲`, `${scale.criteria.minAge}–${scale.criteria.maxAge} 岁`, `Ages ${scale.criteria.minAge}–${scale.criteria.maxAge}`)
+      : L3(`${scale.criteria.minAge} 歲以上`, `${scale.criteria.minAge} 岁以上`, `Ages ${scale.criteria.minAge}+`);
 
     let actionHtml = '';
     if (!st.enabled) {
@@ -135,26 +158,26 @@ function renderScaleCards() {
       actionHtml = `
         <div class="scale-card-done">✓</div>
         <div class="scale-card-action">
-          <button class="btn-start" data-action="view-report" data-id="${scale.id}">查看報告</button>
-          <button class="btn-redo" data-action="redo" data-id="${scale.id}">重新作答</button>
+          <button class="btn-start" data-action="view-report" data-id="${scale.id}">${TR('查看報告')}</button>
+          <button class="btn-redo" data-action="redo" data-id="${scale.id}">${TR('重新作答')}</button>
         </div>`;
     } else {
       actionHtml = `
         <div class="scale-card-action">
-          <button class="btn-start" data-action="start" data-id="${scale.id}">開始作答 →</button>
+          <button class="btn-start" data-action="start" data-id="${scale.id}">${L3('開始作答 →','开始作答 →','Start →')}</button>
         </div>`;
     }
 
     return `
       <div class="scale-card ${st.enabled ? (done ? 'completed' : 'enabled') : 'disabled'}" data-id="${scale.id}">
-        <div class="scale-card-badge ${badgeCls}">${scale.category}</div>
+        <div class="scale-card-badge ${badgeCls}">${TR(scale.category)}</div>
         <div class="scale-card-name">${scale.name}</div>
-        <div class="scale-card-full">${scale.fullName}</div>
-        <div class="scale-card-desc">${scale.description}</div>
+        <div class="scale-card-full">${TR(scale.fullName)}</div>
+        <div class="scale-card-desc">${TR(scale.description)}</div>
         <div class="scale-card-meta">
-          <span class="meta-tag">⏱ 約${scale.estimatedMinutes}分鐘</span>
+          <span class="meta-tag">⏱ ${L3(`約${scale.estimatedMinutes}分鐘`,`约${scale.estimatedMinutes}分钟`,`~${scale.estimatedMinutes} min`)}</span>
           <span class="meta-tag">👤 ${ageLabel}</span>
-          <span class="meta-tag">✍️ ${rolesLabel}填答</span>
+          <span class="meta-tag">✍️ ${L3(`${rolesLabel}填答`,`${rolesLabel}填答`,`By ${rolesLabel}`)}</span>
         </div>
         ${actionHtml}
       </div>`;
@@ -165,7 +188,7 @@ function renderProfileNotice() {
   return profileComplete() ? '' : `
     <div class="profile-notice">
       <span class="profile-notice-icon">💡</span>
-      <span>請先填寫左側個人資料（受測者出生日期與填答者關係為必填），系統將自動開放適用的量表。</span>
+      <span>${TR('請先填寫左側個人資料（受測者出生日期與填答者關係為必填），系統將自動開放適用的量表。')}</span>
     </div>`;
 }
 
@@ -178,7 +201,7 @@ function syncProfileFromDOM() {
     S.profile.subjectDOB = dob.value;
     S.profile.subjectAge = ageFromDOB(dob.value);
     const ageEl = document.getElementById('f-subjectAge');
-    if (ageEl) ageEl.value = S.profile.subjectAge ? S.profile.subjectAge + ' 歲' : '';
+    if (ageEl) ageEl.value = S.profile.subjectAge ? S.profile.subjectAge + L3(' 歲',' 岁',' yrs') : '';
   }
   const name = document.getElementById('f-subjectName');
   if (name && name.value !== S.profile.subjectName) S.profile.subjectName = name.value;
@@ -245,61 +268,61 @@ function renderHome() {
       <!-- 個人資料面板 -->
       <aside class="profile-panel">
         <div class="profile-header">
-          <h2>個人資料</h2>
-          <p>請填寫以下資訊，系統將篩選適用量表</p>
+          <h2>${TR('個人資料')}</h2>
+          <p>${TR('請填寫以下資訊，系統將篩選適用量表')}</p>
         </div>
         <div class="profile-body">
-          <div class="profile-divider">受測者資料</div>
+          <div class="profile-divider">${TR('受測者資料')}</div>
           <div class="form-group">
-            <label>姓名</label>
-            <input type="text" id="f-subjectName" value="${esc(S.profile.subjectName)}" placeholder="受測者姓名">
+            <label>${TR('姓名')}</label>
+            <input type="text" id="f-subjectName" value="${esc(S.profile.subjectName)}" placeholder="${TR('受測者姓名')}">
           </div>
           <div class="form-group">
-            <label>出生日期 <span style="color:#e74c3c">*</span></label>
+            <label>${TR('出生日期')} <span style="color:#e74c3c">*</span></label>
             <input type="date" id="f-subjectDOB" value="${esc(S.profile.subjectDOB)}" max="${todayISO()}">
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>年齡（自動帶入）</label>
-              <input type="text" id="f-subjectAge" value="${S.profile.subjectAge ? S.profile.subjectAge + ' 歲' : ''}" placeholder="—" readonly>
+              <label>${TR('年齡（自動帶入）')}</label>
+              <input type="text" id="f-subjectAge" value="${S.profile.subjectAge ? S.profile.subjectAge + L3(' 歲',' 岁',' yrs') : ''}" placeholder="—" readonly>
             </div>
             <div class="form-group">
-              <label>性別</label>
+              <label>${TR('性別')}</label>
               <select id="f-subjectGender">
-                <option value="" ${!S.profile.subjectGender ? 'selected' : ''}>請選擇</option>
-                <option value="male"   ${S.profile.subjectGender==='male'   ? 'selected' : ''}>男</option>
-                <option value="female" ${S.profile.subjectGender==='female' ? 'selected' : ''}>女</option>
-                <option value="other"  ${S.profile.subjectGender==='other'  ? 'selected' : ''}>第三性</option>
+                <option value="" ${!S.profile.subjectGender ? 'selected' : ''}>${TR('請選擇')}</option>
+                <option value="male"   ${S.profile.subjectGender==='male'   ? 'selected' : ''}>${TR('男')}</option>
+                <option value="female" ${S.profile.subjectGender==='female' ? 'selected' : ''}>${TR('女')}</option>
+                <option value="other"  ${S.profile.subjectGender==='other'  ? 'selected' : ''}>${TR('第三性')}</option>
               </select>
             </div>
           </div>
           ${isProjectLaunched() ? `
           <div class="form-group">
-            <label>聯絡電話 <span style="color:#e74c3c">*</span></label>
-            <input type="tel" id="f-subjectPhone" value="${esc(S.profile.subjectPhone)}" placeholder="例：0912345678" autocomplete="tel">
+            <label>${TR('聯絡電話')} <span style="color:#e74c3c">*</span></label>
+            <input type="tel" id="f-subjectPhone" value="${esc(S.profile.subjectPhone)}" placeholder="${TR('例：0912345678')}" autocomplete="tel">
           </div>
           <div class="form-group">
-            <label>聯絡信箱 <span style="color:#e74c3c">*</span></label>
+            <label>${TR('聯絡信箱')} <span style="color:#e74c3c">*</span></label>
             <input type="email" id="f-subjectEmail" value="${esc(S.profile.subjectEmail)}" placeholder="example@email.com" autocomplete="email">
           </div>` : ''}
 
-          <div class="profile-divider">填答者資料</div>
+          <div class="profile-divider">${TR('填答者資料')}</div>
           <div class="form-group">
-            <label>填答者姓名</label>
-            <input type="text" id="f-respondentName" value="${esc(S.profile.respondentName)}" placeholder="填答者姓名">
+            <label>${TR('填答者姓名')}</label>
+            <input type="text" id="f-respondentName" value="${esc(S.profile.respondentName)}" placeholder="${TR('填答者姓名')}">
           </div>
           <div class="form-group">
-            <label>與受測者關係 <span style="color:#e74c3c">*</span></label>
+            <label>${TR('與受測者關係')} <span style="color:#e74c3c">*</span></label>
             <select id="f-respondentRelationship">
-              <option value="" ${!S.profile.respondentRelationship ? 'selected' : ''}>請選擇</option>
-              <option value="self"    ${S.profile.respondentRelationship==='self'    ? 'selected' : ''}>本人</option>
-              <option value="parent"  ${S.profile.respondentRelationship==='parent'  ? 'selected' : ''}>父母／監護人</option>
-              <option value="teacher" ${S.profile.respondentRelationship==='teacher' ? 'selected' : ''}>教師</option>
-              <option value="other"   ${S.profile.respondentRelationship==='other'   ? 'selected' : ''}>其他</option>
+              <option value="" ${!S.profile.respondentRelationship ? 'selected' : ''}>${TR('請選擇')}</option>
+              <option value="self"    ${S.profile.respondentRelationship==='self'    ? 'selected' : ''}>${TR('本人')}</option>
+              <option value="parent"  ${S.profile.respondentRelationship==='parent'  ? 'selected' : ''}>${TR('父母／監護人')}</option>
+              <option value="teacher" ${S.profile.respondentRelationship==='teacher' ? 'selected' : ''}>${TR('教師')}</option>
+              <option value="other"   ${S.profile.respondentRelationship==='other'   ? 'selected' : ''}>${TR('其他')}</option>
             </select>
           </div>
           <div class="form-group">
-            <label>評估日期（測驗當日自動帶入）</label>
+            <label>${TR('評估日期（測驗當日自動帶入）')}</label>
             <input type="text" id="f-assessmentDate" value="${esc(S.profile.assessmentDate)}" readonly>
           </div>
         </div>
@@ -307,12 +330,12 @@ function renderHome() {
 
       <!-- 量表選擇區 -->
       <main class="scales-panel">
-        <div class="section-title">評量量表</div>
+        <div class="section-title">${TR('評量量表')}</div>
         ${noticeHtml}
         <div class="scales-grid">${cards}</div>
         <p class="disclaimer">
-          本系統提供之評量結果僅供參考，不構成任何診斷依據。<br>
-          如有相關疑慮，請洽專業醫師或心理師進行完整評估。
+          ${TR('本系統提供之評量結果僅供參考，不構成任何診斷依據。')}<br>
+          ${TR('如有相關疑慮，請洽專業醫師或心理師進行完整評估。')}
         </p>
       </main>
     </div>`;
@@ -323,7 +346,7 @@ function renderHome() {
 // ─────────────────────────────────────────
 function renderQuestionnaire() {
   const scale = SCALES.find(s => s.id === S.activeScaleId);
-  if (!scale) return '<p>錯誤：找不到量表</p>';
+  if (!scale) return `<p>${TR('錯誤：找不到量表')}</p>`;
 
   // 計算題目總數與已答數
   const allQ = getAllQuestions(scale);
@@ -333,9 +356,9 @@ function renderQuestionnaire() {
 
   const sectionsHtml = scale.sections.map(section => {
     const sectionHeader = section.label
-      ? `<div class="q-section-header">📋 ${section.label}</div>` : '';
+      ? `<div class="q-section-header">📋 ${TR(section.label)}</div>` : '';
     const sectionNote = section.note
-      ? `<div class="q-section-note">ℹ️ ${section.note}</div>` : '';
+      ? `<div class="q-section-note">ℹ️ ${TR(section.note)}</div>` : '';
 
     const questionsHtml = section.questions.map(q => {
       const val = S.answers[q.id];
@@ -351,14 +374,14 @@ function renderQuestionnaire() {
 
       const optionsHtml = q.options.map(opt => {
         const sel = val === opt.value ? 'selected' : '';
-        return `<button class="opt-btn ${sel}" data-qid="${q.id}" data-val="${opt.value}">${opt.label}</button>`;
+        return `<button class="opt-btn ${sel}" data-qid="${q.id}" data-val="${opt.value}">${TR(opt.label)}</button>`;
       }).join('');
 
       return `
         <div class="q-item ${isAnswered ? 'answered' : ''} ${isFlag ? 'flagged' : ''}" id="q-${q.id}">
           <div class="q-num">${q.id}</div>
           <div>
-            <div class="q-text">${q.text}</div>
+            <div class="q-text">${TR(q.text)}</div>
             <div class="q-options ${optClass}">${optionsHtml}</div>
           </div>
         </div>`;
@@ -374,27 +397,27 @@ function renderQuestionnaire() {
       <!-- 標題列 -->
       <div class="q-header">
         <div class="q-title-area">
-          <h1>${scale.fullName}</h1>
-          <p>受測者：${esc(S.profile.subjectName) || '（未填寫）'} ／ 填答者：${esc(S.profile.respondentName) || '（未填寫）'}</p>
+          <h1>${TR(scale.fullName)}</h1>
+          <p>${TR('受測者：')}${esc(S.profile.subjectName) || L3('（未填寫）','（未填写）','(not filled)')} ／ ${TR('填答者：')}${esc(S.profile.respondentName) || L3('（未填寫）','（未填写）','(not filled)')}</p>
         </div>
         <div class="q-progress-area">
-          <div class="q-progress-label">${answered} / ${total} 題已作答（${pct}%）</div>
+          <div class="q-progress-label">${L3(`${answered} / ${total} 題已作答（${pct}%）`, `${answered} / ${total} 题已作答（${pct}%）`, `${answered} / ${total} answered (${pct}%)`)}</div>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         </div>
       </div>
 
       <!-- 作答說明 -->
-      <div class="q-instructions">${scale.instructions}</div>
+      <div class="q-instructions">${TR(scale.instructions)}</div>
 
       <!-- 題目區 -->
       ${sectionsHtml}
 
       <!-- 底部操作列 -->
       <div class="q-footer">
-        <button class="btn-back" data-action="back-home">← 返回首頁</button>
-        <div class="q-answered-count">已完成 <strong>${answered}</strong> / ${total} 題</div>
+        <button class="btn-back" data-action="back-home">${L3('← 返回首頁','← 返回首页','← Home')}</button>
+        <div class="q-answered-count">${L3(`已完成 <strong>${answered}</strong> / ${total} 題`, `已完成 <strong>${answered}</strong> / ${total} 题`, `Done <strong>${answered}</strong> / ${total}`)}</div>
         <button class="btn-submit" data-action="submit" ${canSubmit ? '' : 'disabled'}>
-          ${canSubmit ? '✓ 完成並查看報告' : `尚餘 ${total - answered} 題未作答`}
+          ${canSubmit ? L3('✓ 完成並查看報告','✓ 完成并查看报告','✓ Finish & view report') : L3(`尚餘 ${total - answered} 題未作答`,`尚余 ${total - answered} 题未作答`,`${total - answered} item(s) remaining`)}
         </button>
       </div>
     </div>`;
@@ -410,8 +433,8 @@ function buildReportHTML() {
   const ids = Object.keys(S.completedReports);
   if (!ids.length) return null;
   const p = S.profile;
-  const genderMap = { male:'男', female:'女', other:'第三性' };
-  const relMap = { self:'本人', parent:'父母／監護人', teacher:'教師', other:'其他' };
+  const genderMap = { male:TR('男'), female:TR('女'), other:TR('第三性') };
+  const relMap = { self:TR('本人'), parent:TR('父母／監護人'), teacher:TR('教師'), other:TR('其他') };
   const prevId = S.activeScaleId;
   const sections = ids.map(id => {
     S.activeScaleId = id;
@@ -426,10 +449,10 @@ function buildReportHTML() {
     else if (scale.scoring.type === 'bach')         body = renderBachReport(report, scale);
     else if (scale.scoring.type === 'mdq')          body = renderMdqReport(report, scale);
     else if (scale.scoring.type === 'audit')        body = renderAuditReport(report, scale);
-    const flags = (report.flags || []).map(f => `<div class="report-flag">⚠️ ${f.message}</div>`).join('');
+    const flags = (report.flags || []).map(f => `<div class="report-flag">⚠️ ${TR(f.message)}</div>`).join('');
     return `
       <section class="report-section-doc">
-        <h2 class="report-scale-name">${scale.fullName}</h2>
+        <h2 class="report-scale-name">${TR(scale.fullName)}</h2>
         ${flags}
         ${body}
       </section>`;
@@ -463,39 +486,39 @@ function buildReportHTML() {
     .disclaimer { font-size: .75rem; color: #888; line-height: 1.6; margin-top: 24px; padding-top: 14px; border-top: 1px dashed #ddd; }
   `;
   return `<!DOCTYPE html>
-<html lang="zh-TW"><head><meta charset="UTF-8"><title>ScalarMynd 評估報告 — ${esc(p.subjectName) || ''}</title>
+<html lang="${(window.I18N && I18N.htmlLang(I18N.lang)) || 'zh-TW'}"><head><meta charset="UTF-8"><title>${L3('ScalarMynd 評估報告','ScalarMynd 评估报告','ScalarMynd Assessment Report')} — ${esc(p.subjectName) || ''}</title>
 <style>${styles}</style></head><body>
   <div class="doc-wrap">
     <div class="doc-header">
       <div class="doc-brand">ScalarMynd ─ Measuring the depth of your mind</div>
-      <div class="doc-subtitle">心理與行為健康評量報告</div>
+      <div class="doc-subtitle">${TR('心理與行為健康評量報告')}</div>
       <div class="doc-meta">
-        <div>受測者：<strong>${esc(p.subjectName) || '─'}</strong></div>
-        <div>性別：<strong>${genderMap[p.subjectGender] || '─'}</strong></div>
-        <div>年齡：<strong>${p.subjectAge ? p.subjectAge + ' 歲' : '─'}</strong></div>
-        <div>出生日期：<strong>${esc(p.subjectDOB) || '─'}</strong></div>
-        <div>填答者：<strong>${esc(p.respondentName) || '─'}</strong></div>
-        <div>關係：<strong>${relMap[p.respondentRelationship] || '─'}</strong></div>
-        <div>聯絡電話：<strong>${esc(p.subjectPhone) || '─'}</strong></div>
-        <div>聯絡信箱：<strong>${esc(p.subjectEmail) || '─'}</strong></div>
-        <div>評估日期：<strong>${esc(p.assessmentDate)}</strong></div>
+        <div>${TR('受測者：')}<strong>${esc(p.subjectName) || '─'}</strong></div>
+        <div>${TR('性別：')}<strong>${genderMap[p.subjectGender] || '─'}</strong></div>
+        <div>${TR('年齡：')}<strong>${p.subjectAge ? p.subjectAge + L3(' 歲',' 岁',' yrs') : '─'}</strong></div>
+        <div>${TR('出生日期：')}<strong>${esc(p.subjectDOB) || '─'}</strong></div>
+        <div>${TR('填答者：')}<strong>${esc(p.respondentName) || '─'}</strong></div>
+        <div>${TR('關係：')}<strong>${relMap[p.respondentRelationship] || '─'}</strong></div>
+        <div>${TR('聯絡電話：')}<strong>${esc(p.subjectPhone) || '─'}</strong></div>
+        <div>${TR('聯絡信箱：')}<strong>${esc(p.subjectEmail) || '─'}</strong></div>
+        <div>${TR('評估日期：')}<strong>${esc(p.assessmentDate)}</strong></div>
       </div>
     </div>
     ${sections.join('')}
-    <p class="disclaimer">本報告結果僅供參考，不構成任何診斷依據。如有相關疑慮，請洽專業醫師或臨床心理師進行完整評估。</p>
+    <p class="disclaimer">${TR('本報告結果僅供參考，不構成任何診斷依據。如有相關疑慮，請洽專業醫師或臨床心理師進行完整評估。')}</p>
   </div>
 </body></html>`;
 }
 
 function renderReport() {
   const report = S.completedReports[S.activeScaleId];
-  if (!report) return '<p>錯誤：找不到報告</p>';
+  if (!report) return `<p>${TR('錯誤：找不到報告')}</p>`;
 
   const scale = SCALES.find(s => s.id === S.activeScaleId);
   const p = S.profile;
 
-  const genderMap = { male:'男', female:'女', other:'第三性' };
-  const relMap = { self:'本人', parent:'父母／監護人', teacher:'教師', other:'其他' };
+  const genderMap = { male:TR('男'), female:TR('女'), other:TR('第三性') };
+  const relMap = { self:TR('本人'), parent:TR('父母／監護人'), teacher:TR('教師'), other:TR('其他') };
 
   let bodyHtml = '';
 
@@ -517,7 +540,7 @@ function renderReport() {
 
   // Flags
   const flagsHtml = (report.flags || []).map(f =>
-    `<div class="report-flag">⚠️ ${f.message}</div>`
+    `<div class="report-flag">⚠️ ${TR(f.message)}</div>`
   ).join('');
 
   return `
@@ -525,16 +548,16 @@ function renderReport() {
       <div class="report-container">
         <div class="report-header">
           <div class="report-brand">ScalarMynd ─ Measuring the depth of your mind</div>
-          <div class="report-scale-name">${scale.fullName}</div>
+          <div class="report-scale-name">${TR(scale.fullName)}</div>
           <div class="report-meta-row">
-            <div class="report-meta-item">受測者：<strong>${esc(p.subjectName) || '─'}</strong></div>
-            <div class="report-meta-item">年齡：<strong>${p.subjectAge ? p.subjectAge + ' 歲' : '─'}</strong></div>
-            <div class="report-meta-item">性別：<strong>${genderMap[p.subjectGender] || '─'}</strong></div>
-            <div class="report-meta-item">填答者：<strong>${esc(p.respondentName) || '─'}</strong></div>
-            <div class="report-meta-item">關係：<strong>${relMap[p.respondentRelationship] || '─'}</strong></div>
-            <div class="report-meta-item">聯絡電話：<strong>${esc(p.subjectPhone) || '─'}</strong></div>
-            <div class="report-meta-item">聯絡信箱：<strong>${esc(p.subjectEmail) || '─'}</strong></div>
-            <div class="report-meta-item">評估日期：<strong>${esc(p.assessmentDate)}</strong></div>
+            <div class="report-meta-item">${TR('受測者：')}<strong>${esc(p.subjectName) || '─'}</strong></div>
+            <div class="report-meta-item">${TR('年齡：')}<strong>${p.subjectAge ? p.subjectAge + L3(' 歲',' 岁',' yrs') : '─'}</strong></div>
+            <div class="report-meta-item">${TR('性別：')}<strong>${genderMap[p.subjectGender] || '─'}</strong></div>
+            <div class="report-meta-item">${TR('填答者：')}<strong>${esc(p.respondentName) || '─'}</strong></div>
+            <div class="report-meta-item">${TR('關係：')}<strong>${relMap[p.respondentRelationship] || '─'}</strong></div>
+            <div class="report-meta-item">${TR('聯絡電話：')}<strong>${esc(p.subjectPhone) || '─'}</strong></div>
+            <div class="report-meta-item">${TR('聯絡信箱：')}<strong>${esc(p.subjectEmail) || '─'}</strong></div>
+            <div class="report-meta-item">${TR('評估日期：')}<strong>${esc(p.assessmentDate)}</strong></div>
           </div>
         </div>
 
@@ -542,13 +565,13 @@ function renderReport() {
           ${flagsHtml}
           ${bodyHtml}
           <p class="disclaimer">
-            本報告結果僅供參考，不構成任何診斷依據。如有相關疑慮，請洽專業醫師或臨床心理師進行完整評估。
+            ${TR('本報告結果僅供參考，不構成任何診斷依據。如有相關疑慮，請洽專業醫師或臨床心理師進行完整評估。')}
           </p>
         </div>
 
         <div class="report-actions">
-          <button class="btn-print" onclick="window.print()">🖨 列印報告</button>
-          <button class="btn-new-scale" data-action="back-home">← 返回主頁選擇其他量表</button>
+          <button class="btn-print" onclick="window.print()">${L3('🖨 列印報告','🖨 打印报告','🖨 Print')}</button>
+          <button class="btn-new-scale" data-action="back-home">${L3('← 返回主頁選擇其他量表','← 返回主页选择其他量表','← Back to scale list')}</button>
         </div>
       </div>
     </div>`;
@@ -566,10 +589,10 @@ function renderSumReport(report, scale) {
 
   return `
     <div class="report-summary" style="${summaryStyle}">
-      <div class="report-summary-label">評估結果</div>
-      <div class="report-summary-result">${interp.label}</div>
-      <div class="report-summary-score">總分：${total} 分（滿分 ${getMaxSum(scale)} 分）</div>
-      <div class="report-summary-note">${interp.note}</div>
+      <div class="report-summary-label">${TR('評估結果')}</div>
+      <div class="report-summary-result">${TR(interp.label)}</div>
+      <div class="report-summary-score">${L3(`總分：${total} 分（滿分 ${getMaxSum(scale)} 分）`, `总分：${total} 分（满分 ${getMaxSum(scale)} 分）`, `Total: ${total} (max ${getMaxSum(scale)})`)}</div>
+      <div class="report-summary-note">${TR(interp.note)}</div>
     </div>
     ${renderScoreBreakdown(scale, report)}`;
 }
@@ -584,14 +607,14 @@ function renderSubscaleSumReport(report, scale) {
     const interp = getRange(sc.interpretation.subscales[sub.id].ranges, score);
     return `
       <tr>
-        <td><strong>${sub.name}</strong></td>
+        <td><strong>${TR(sub.name)}</strong></td>
         <td>${score} / ${maxS}</td>
         <td class="score-bar-cell">
           <div class="mini-bar">
             <div class="mini-bar-fill" style="width:${pct}%; background:${interp.color}"></div>
           </div>
         </td>
-        <td><span class="dsm-badge" style="background:${interp.color}20; color:${interp.color}">${interp.label}</span></td>
+        <td><span class="dsm-badge" style="background:${interp.color}20; color:${interp.color}">${TR(interp.label)}</span></td>
       </tr>`;
   }).join('');
 
@@ -599,21 +622,21 @@ function renderSubscaleSumReport(report, scale) {
   const partAPositive = report.partAPositive;
   const screenHtml = partAPositive !== undefined ? `
     <div class="report-section">
-      <div class="report-section-title">Part A 快速篩查結果</div>
+      <div class="report-section-title">Part A ${TR('快速篩查結果')}</div>
       <div class="report-summary" style="background:${partAPositive ? '#fde8e820' : '#e8f8ee20'}; border-color:${partAPositive ? '#e74c3c' : '#27ae60'}; color:${partAPositive ? '#e74c3c' : '#27ae60'}">
-        <div class="report-summary-result">${partAPositive ? '篩查陽性（建議進一步評估）' : '篩查陰性'}</div>
+        <div class="report-summary-result">${partAPositive ? TR('篩查陽性（建議進一步評估）') : TR('篩查陰性')}</div>
         <div class="report-summary-note">${partAPositive
-          ? 'Part A 篩查顯示有明顯ADHD症狀風險，建議由專業醫師進行完整診斷評估。'
-          : 'Part A 篩查結果未達陽性門檻，但全量表仍可提供參考。'}</div>
+          ? 'Part A ' + TR('篩查顯示有明顯ADHD症狀風險，建議由專業醫師進行完整診斷評估。')
+          : 'Part A ' + TR('篩查結果未達陽性門檻，但全量表仍可提供參考。')}</div>
       </div>
     </div>` : '';
 
   return `
     ${screenHtml}
     <div class="report-section">
-      <div class="report-section-title">各分向度得分</div>
+      <div class="report-section-title">${TR('各分向度得分')}</div>
       <table class="score-table">
-        <thead><tr><th>向度</th><th>得分</th><th>分布</th><th>程度</th></tr></thead>
+        <thead><tr><th>${TR('向度')}</th><th>${TR('得分')}</th><th>${TR('分布')}</th><th>${TR('程度')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -630,16 +653,16 @@ function renderSubscaleAvgReport(report, scale) {
     const pct = Math.round(report.subscoreAvgs[sub.id] / 3 * 100);
     return `
       <tr>
-        <td><strong>${sub.name}</strong></td>
-        <td>平均 ${avg} / 3.00</td>
+        <td><strong>${TR(sub.name)}</strong></td>
+        <td>${L3(`平均 ${avg} / 3.00`, `平均 ${avg} / 3.00`, `Mean ${avg} / 3.00`)}</td>
         <td class="score-bar-cell">
           <div class="mini-bar">
             <div class="mini-bar-fill" style="width:${pct}%; background:${meetsThreshold ? '#e74c3c' : '#27ae60'}"></div>
           </div>
         </td>
-        <td>陽性題數：${positives}/${sub.questionIds.length}
+        <td>${L3(`陽性題數：${positives}/${sub.questionIds.length}`, `阳性题数：${positives}/${sub.questionIds.length}`, `Positive items: ${positives}/${sub.questionIds.length}`)}
           <br><span class="dsm-badge ${meetsThreshold ? 'dsm-positive' : 'dsm-negative'}">
-            ${meetsThreshold ? `✗ 達門檻（≥${sub.dsmRequired}題）` : `✓ 未達門檻`}
+            ${meetsThreshold ? L3(`✗ 達門檻（≥${sub.dsmRequired}題）`,`✗ 达门槛（≥${sub.dsmRequired}题）`,`✗ Threshold met (≥${sub.dsmRequired})`) : L3('✓ 未達門檻','✓ 未达门槛','✓ Below threshold')}
           </span>
         </td>
       </tr>`;
@@ -651,19 +674,19 @@ function renderSubscaleAvgReport(report, scale) {
   // ODD summary
   const oddSub = sc.subscales.find(s => s.id === 'odd');
   const oddHtml = oddSub && report.oddPositive ? `
-    <div class="report-flag">⚠️ 對立反抗向度（ODD）達DSM-IV門檻（陽性題數 ${report.positiveItems['odd']} ≥ ${oddSub.dsmRequired}），建議轉介專業評估。</div>` : '';
+    <div class="report-flag">⚠️ ${L3(`對立反抗向度（ODD）達DSM-IV門檻（陽性題數 ${report.positiveItems['odd']} ≥ ${oddSub.dsmRequired}），建議轉介專業評估。`, `对立反抗向度（ODD）达DSM-IV门槛（阳性题数 ${report.positiveItems['odd']} ≥ ${oddSub.dsmRequired}），建议转介专业评估。`, `Oppositional Defiant (ODD) meets the DSM-IV threshold (positive items ${report.positiveItems['odd']} ≥ ${oddSub.dsmRequired}); referral for professional evaluation is recommended.`)}</div>` : '';
 
   return `
     <div class="report-summary" style="${summaryStyle}">
-      <div class="report-summary-label">ADHD 綜合評估</div>
-      <div class="report-summary-result">${overallRule.label}</div>
-      <div class="report-summary-note">各向度平均分 ≥ 2.0 且 ≥ 指定題數達陽性標準（評分 ≥ 2）為符合DSM-IV診斷門檻。本結果僅供參考，診斷需由專業醫師判定。</div>
+      <div class="report-summary-label">ADHD ${TR('綜合評估')}</div>
+      <div class="report-summary-result">${TR(overallRule.label)}</div>
+      <div class="report-summary-note">${L3('各向度平均分 ≥ 2.0 且 ≥ 指定題數達陽性標準（評分 ≥ 2）為符合DSM-IV診斷門檻。本結果僅供參考，診斷需由專業醫師判定。', '各向度平均分 ≥ 2.0 且 ≥ 指定题数达阳性标准（评分 ≥ 2）为符合DSM-IV诊断门槛。本结果仅供参考，诊断需由专业医师判定。', 'A subscale mean ≥ 2.0 with at least the required number of positive items (rated ≥ 2) meets the DSM-IV threshold. This result is for reference only; diagnosis must be made by a qualified physician.')}</div>
     </div>
     ${oddHtml}
     <div class="report-section">
-      <div class="report-section-title">各向度分析</div>
+      <div class="report-section-title">${TR('各向度分析')}</div>
       <table class="score-table">
-        <thead><tr><th>向度</th><th>平均分</th><th>分布</th><th>DSM-IV門檻</th></tr></thead>
+        <thead><tr><th>${TR('向度')}</th><th>${TR('平均分')}</th><th>${TR('分布')}</th><th>DSM-IV${TR('門檻')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -681,16 +704,16 @@ function renderVanderbiltReport(report, scale) {
     const meets = positives >= sub.dsmRequired;
     return `
       <tr>
-        <td><strong>${sub.name}</strong></td>
+        <td><strong>${TR(sub.name)}</strong></td>
         <td>${total} / ${maxT}</td>
         <td class="score-bar-cell">
           <div class="mini-bar">
             <div class="mini-bar-fill" style="width:${pct}%; background:${meets ? '#e74c3c' : '#3a8fd4'}"></div>
           </div>
         </td>
-        <td>陽性題數：${positives}/${sub.questionIds.length}
+        <td>${L3(`陽性題數：${positives}/${sub.questionIds.length}`, `阳性题数：${positives}/${sub.questionIds.length}`, `Positive items: ${positives}/${sub.questionIds.length}`)}
           <br><span class="dsm-badge ${meets ? 'dsm-positive' : 'dsm-negative'}">
-            ${meets ? `✗ 達門檻（≥${sub.dsmRequired}題）` : `✓ 未達門檻`}
+            ${meets ? L3(`✗ 達門檻（≥${sub.dsmRequired}題）`,`✗ 达门槛（≥${sub.dsmRequired}题）`,`✗ Threshold met (≥${sub.dsmRequired})`) : L3('✓ 未達門檻','✓ 未达门槛','✓ Below threshold')}
           </span>
         </td>
       </tr>`;
@@ -704,39 +727,39 @@ function renderVanderbiltReport(report, scale) {
     const val = S.answers[qid];
     const isImpaired = val >= perfSub.impairmentThreshold;
     return `<tr>
-      <td>${q ? q.text : qid}</td>
-      <td>${['','優秀','平均以上','平均','有點問題','有嚴重問題'][val] || val}</td>
-      <td><span class="dsm-badge ${isImpaired ? 'dsm-positive' : 'dsm-negative'}">${isImpaired ? '有功能障礙' : '尚可'}</span></td>
+      <td>${q ? TR(q.text) : qid}</td>
+      <td>${['', TR('優秀'), TR('平均以上'), TR('平均'), TR('有點問題'), TR('有嚴重問題')][val] || val}</td>
+      <td><span class="dsm-badge ${isImpaired ? 'dsm-positive' : 'dsm-negative'}">${isImpaired ? TR('有功能障礙') : TR('尚可')}</span></td>
     </tr>`;
   }).join('');
 
   // Overall diagnosis
   const diagList = report.diagnoses || [];
   const diagHtml = diagList.length > 0
-    ? diagList.map(d => `<span class="dsm-badge dsm-positive" style="margin:3px 4px; display:inline-block">${d}</span>`).join('')
-    : '<span class="dsm-badge dsm-negative">未達任何主要診斷門檻</span>';
+    ? diagList.map(d => `<span class="dsm-badge dsm-positive" style="margin:3px 4px; display:inline-block">${TR(d)}</span>`).join('')
+    : `<span class="dsm-badge dsm-negative">${TR('未達任何主要診斷門檻')}</span>`;
 
   return `
     <div class="report-section">
-      <div class="report-section-title">主要診斷門檻評估</div>
+      <div class="report-section-title">${TR('主要診斷門檻評估')}</div>
       <div style="padding: 12px 0">${diagHtml}</div>
-      <p style="font-size:12px; color:var(--text-muted); margin-top:8px">* 達門檻表示該向度症狀數量符合DSM-IV診斷標準，最終診斷須由專業醫師判定。</p>
+      <p style="font-size:12px; color:var(--text-muted); margin-top:8px">* ${TR('達門檻表示該向度症狀數量符合DSM-IV診斷標準，最終診斷須由專業醫師判定。')}</p>
     </div>
     <div class="report-section">
-      <div class="report-section-title">症狀向度得分</div>
+      <div class="report-section-title">${TR('症狀向度得分')}</div>
       <table class="score-table">
-        <thead><tr><th>向度</th><th>總分</th><th>分布</th><th>DSM-IV門檻</th></tr></thead>
+        <thead><tr><th>${TR('向度')}</th><th>${TR('總分')}</th><th>${TR('分布')}</th><th>DSM-IV${TR('門檻')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
     <div class="report-section">
-      <div class="report-section-title">功能表現評估</div>
-      <p style="font-size:13px; color:var(--text-muted); margin-bottom:10px">功能障礙定義：評分 ≥ 4（有點問題／有嚴重問題）</p>
+      <div class="report-section-title">${TR('功能表現評估')}</div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:10px">${L3('功能障礙定義：評分 ≥ 4（有點問題／有嚴重問題）','功能障碍定义：评分 ≥ 4（有点问题／有严重问题）','Impairment defined as a rating ≥ 4 (Somewhat of a problem / Problematic)')}</p>
       <table class="score-table">
-        <thead><tr><th>項目</th><th>評分</th><th>功能狀態</th></tr></thead>
+        <thead><tr><th>${TR('項目')}</th><th>${TR('評分')}</th><th>${TR('功能狀態')}</th></tr></thead>
         <tbody>${perfRows}</tbody>
       </table>
-      ${impaired > 0 ? `<p style="margin-top:10px; font-size:13px; color:var(--orange)">共 <strong>${impaired}</strong> 個功能領域出現障礙（評分 ≥ 4）。</p>` : ''}
+      ${impaired > 0 ? `<p style="margin-top:10px; font-size:13px; color:var(--orange)">${L3(`共 <strong>${impaired}</strong> 個功能領域出現障礙（評分 ≥ 4）。`, `共 <strong>${impaired}</strong> 个功能领域出现障碍（评分 ≥ 4）。`, `<strong>${impaired}</strong> functional domain(s) show impairment (rating ≥ 4).`)}</p>` : ''}
     </div>
     ${renderScoreBreakdown(scale, report)}`;
 }
@@ -753,7 +776,7 @@ function renderBachReport(report, scale) {
 
   const categoriesHtml = scale.sections.map(section => {
     const items = byCategory[section.id] || [];
-    const catLabel = sc.categoryLabels[section.id] || section.label;
+    const catLabel = TR(sc.categoryLabels[section.id] || section.label);
 
     const itemsHtml = items.map(item => {
       const significant = item.score >= 5;
@@ -762,8 +785,8 @@ function renderBachReport(report, scale) {
       return `
         <div class="bach-item ${significant ? 'very-significant' : notable ? 'significant' : ''}">
           <div class="bach-score-dot" style="background:${dotColor}20; color:${dotColor}">${item.score}</div>
-          <div style="flex:1; font-size:13px">${item.text}</div>
-          ${notable ? `<div style="font-size:11px; color:${dotColor}; font-weight:700; white-space:nowrap">${significant ? '非常顯著' : '值得關注'}</div>` : ''}
+          <div style="flex:1; font-size:13px">${TR(item.text)}</div>
+          ${notable ? `<div style="font-size:11px; color:${dotColor}; font-weight:700; white-space:nowrap">${significant ? TR('非常顯著') : TR('值得關注')}</div>` : ''}
         </div>`;
     }).join('');
 
@@ -777,16 +800,16 @@ function renderBachReport(report, scale) {
 
   return `
     <div class="report-summary" style="background:${summaryColor}18; border-color:${summaryColor}; color:${summaryColor}">
-      <div class="report-summary-label">情緒評估摘要</div>
+      <div class="report-summary-label">${TR('情緒評估摘要')}</div>
       <div class="report-summary-result">
-        ${totalHighlighted === 0 ? '情緒狀態良好' : `共 ${totalHighlighted} 個情緒面向值得關注`}
+        ${totalHighlighted === 0 ? TR('情緒狀態良好') : L3(`共 ${totalHighlighted} 個情緒面向值得關注`, `共 ${totalHighlighted} 个情绪面向值得关注`, `${totalHighlighted} emotional dimension(s) worth attention`)}
       </div>
       <div class="report-summary-note">
-        評分 ≥ ${threshold} 分為值得關注的情緒面向，≥ 5 分為非常顯著。以下結果僅供自我覺察參考。
+        ${L3(`評分 ≥ ${threshold} 分為值得關注的情緒面向，≥ 5 分為非常顯著。以下結果僅供自我覺察參考。`, `评分 ≥ ${threshold} 分为值得关注的情绪面向，≥ 5 分为非常显著。以下结果仅供自我觉察参考。`, `A rating ≥ ${threshold} marks a dimension worth attention; ≥ 5 is highly significant. The results below are for self-awareness reference only.`)}
       </div>
     </div>
     <div class="report-section">
-      <div class="report-section-title">各情緒面向評估結果（1=完全不符合，5=非常符合）</div>
+      <div class="report-section-title">${L3('各情緒面向評估結果（1=完全不符合，5=非常符合）','各情绪面向评估结果（1=完全不符合，5=非常符合）','Results by emotional dimension (1 = Not at all, 5 = Completely)')}</div>
       ${categoriesHtml}
     </div>`;
 }
@@ -798,48 +821,48 @@ function renderMdqReport(report, scale) {
   const color = positive ? '#e74c3c' : '#27ae60';
   const summaryStyle = `background:${color}18; border-color:${color}; color:${color};`;
 
-  const impairmentLabel = ['沒有問題','輕度問題','中度問題','嚴重問題'][report.impairment] || '─';
+  const impairmentLabel = [TR('沒有問題'),TR('輕度問題'),TR('中度問題'),TR('嚴重問題')][report.impairment] || '─';
 
   return `
     <div class="report-summary" style="${summaryStyle}">
-      <div class="report-summary-label">MDQ 篩查結果</div>
-      <div class="report-summary-result">${positive ? '篩查陽性（建議進一步評估）' : '篩查陰性'}</div>
+      <div class="report-summary-label">MDQ ${TR('篩查結果')}</div>
+      <div class="report-summary-result">${positive ? TR('篩查陽性（建議進一步評估）') : TR('篩查陰性')}</div>
       <div class="report-summary-note">
         ${positive
-          ? '結果符合 MDQ 陽性條件，建議由精神科醫師進行雙相情感障礙完整評估。本結果僅供參考，最終診斷須由專業醫師判定。'
-          : '目前結果未達 MDQ 陽性條件。若仍有疑慮，請尋求專業協助。'}
+          ? TR('結果符合 MDQ 陽性條件，建議由精神科醫師進行雙相情感障礙完整評估。本結果僅供參考，最終診斷須由專業醫師判定。')
+          : TR('目前結果未達 MDQ 陽性條件。若仍有疑慮，請尋求專業協助。')}
       </div>
     </div>
     <div class="report-section">
-      <div class="report-section-title">篩查條件評估</div>
+      <div class="report-section-title">${TR('篩查條件評估')}</div>
       <table class="score-table">
-        <thead><tr><th>條件</th><th>結果</th><th>是否符合</th></tr></thead>
+        <thead><tr><th>${TR('條件')}</th><th>${TR('結果')}</th><th>${TR('是否符合')}</th></tr></thead>
         <tbody>
           <tr>
-            <td>第一部分：症狀數量（≥${sc.symptomThreshold} 項回答「是」）</td>
+            <td>${L3(`第一部分：症狀數量（≥${sc.symptomThreshold} 項回答「是」）`, `第一部分：症状数量（≥${sc.symptomThreshold} 项回答「是」）`, `Part 1: Symptom count (≥${sc.symptomThreshold} answered "Yes")`)}</td>
             <td>${report.symptomPositive} / ${sc.symptomIds.length}</td>
             <td><span class="dsm-badge ${report.symptomPositive >= sc.symptomThreshold ? 'dsm-positive' : 'dsm-negative'}">
-              ${report.symptomPositive >= sc.symptomThreshold ? '✗ 達門檻' : '✓ 未達門檻'}
+              ${report.symptomPositive >= sc.symptomThreshold ? L3('✗ 達門檻','✗ 达门槛','✗ Met') : L3('✓ 未達門檻','✓ 未达门槛','✓ Not met')}
             </span></td>
           </tr>
           <tr>
-            <td>第二部分：症狀同時發生</td>
-            <td>${report.concurrent ? '是' : '否'}</td>
+            <td>${TR('第二部分：症狀同時發生')}</td>
+            <td>${report.concurrent ? TR('是') : TR('否')}</td>
             <td><span class="dsm-badge ${report.concurrent ? 'dsm-positive' : 'dsm-negative'}">
-              ${report.concurrent ? '✗ 是' : '✓ 否'}
+              ${report.concurrent ? L3('✗ 是','✗ 是','✗ Yes') : L3('✓ 否','✓ 否','✓ No')}
             </span></td>
           </tr>
           <tr>
-            <td>第三部分：困擾程度（≥中度問題）</td>
+            <td>${L3('第三部分：困擾程度（≥中度問題）','第三部分：困扰程度（≥中度问题）','Part 3: Impairment (≥ Moderate problem)')}</td>
             <td>${impairmentLabel}</td>
             <td><span class="dsm-badge ${report.impairment >= sc.impairmentThreshold ? 'dsm-positive' : 'dsm-negative'}">
-              ${report.impairment >= sc.impairmentThreshold ? '✗ 達門檻' : '✓ 未達門檻'}
+              ${report.impairment >= sc.impairmentThreshold ? L3('✗ 達門檻','✗ 达门槛','✗ Met') : L3('✓ 未達門檻','✓ 未达门槛','✓ Not met')}
             </span></td>
           </tr>
         </tbody>
       </table>
       <p style="font-size:12px; color:var(--text-muted); margin-top:8px">
-        * MDQ 陽性需同時滿足：第一部分 ≥${sc.symptomThreshold} 項陽性、第二部分為「是」、第三部分困擾程度 ≥ 中度。
+        ${L3(`* MDQ 陽性需同時滿足：第一部分 ≥${sc.symptomThreshold} 項陽性、第二部分為「是」、第三部分困擾程度 ≥ 中度。`, `* MDQ 阳性需同时满足：第一部分 ≥${sc.symptomThreshold} 项阳性、第二部分为「是」、第三部分困扰程度 ≥ 中度。`, `* An MDQ-positive screen requires all three: Part 1 ≥${sc.symptomThreshold} positive, Part 2 "Yes", and Part 3 impairment ≥ Moderate.`)}
       </p>
     </div>
     ${renderScoreBreakdown(scale, report)}`;
@@ -851,26 +874,26 @@ function renderAuditReport(report, scale) {
   const r = report.range;
   const summaryStyle = `background:${r.color}18; border-color:${r.color}; color:${r.color};`;
   const genderNote = report.cutoffLabel === '女性切點'
-    ? `女性以 ${sc.cutoffFemale} 分為問題性飲酒切點`
-    : `男性以 ${sc.cutoffMale} 分為問題性飲酒切點`;
+    ? L3(`女性以 ${sc.cutoffFemale} 分為問題性飲酒切點`, `女性以 ${sc.cutoffFemale} 分为问题性饮酒切点`, `Cutoff for women: ${sc.cutoffFemale}`)
+    : L3(`男性以 ${sc.cutoffMale} 分為問題性飲酒切點`, `男性以 ${sc.cutoffMale} 分为问题性饮酒切点`, `Cutoff for men: ${sc.cutoffMale}`);
 
   return `
     <div class="report-summary" style="${summaryStyle}">
-      <div class="report-summary-label">AUDIT 評估結果</div>
-      <div class="report-summary-result">${r.label}</div>
-      <div class="report-summary-score">總分：${report.total} / 40 分（${genderNote}）</div>
-      <div class="report-summary-note">${r.note}</div>
+      <div class="report-summary-label">AUDIT ${TR('評估結果')}</div>
+      <div class="report-summary-result">${TR(r.label)}</div>
+      <div class="report-summary-score">${L3(`總分：${report.total} / 40 分（${genderNote}）`, `总分：${report.total} / 40 分（${genderNote}）`, `Total: ${report.total} / 40 (${genderNote})`)}</div>
+      <div class="report-summary-note">${TR(r.note)}</div>
     </div>
     <div class="report-section">
-      <div class="report-section-title">分數區間說明</div>
+      <div class="report-section-title">${TR('分數區間說明')}</div>
       <table class="score-table">
-        <thead><tr><th>分數區間</th><th>分類</th><th>建議</th></tr></thead>
+        <thead><tr><th>${TR('分數區間')}</th><th>${TR('分類')}</th><th>${TR('建議')}</th></tr></thead>
         <tbody>
           ${sc.ranges.map(rg => `
             <tr ${report.total >= rg.min && report.total <= rg.max ? 'style="background:'+rg.color+'12; font-weight:600"' : ''}>
               <td>${rg.min}–${rg.max}</td>
-              <td><span class="dsm-badge" style="background:${rg.color}20; color:${rg.color}">${rg.label}</span></td>
-              <td style="font-size:12px">${rg.note}</td>
+              <td><span class="dsm-badge" style="background:${rg.color}20; color:${rg.color}">${TR(rg.label)}</span></td>
+              <td style="font-size:12px">${TR(rg.note)}</td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -886,17 +909,17 @@ function renderScoreBreakdown(scale, report) {
     const opt = q.options.find(o => o.value === val);
     return `<tr>
       <td style="width:40px; text-align:center; color:var(--text-muted)">${q.id}</td>
-      <td>${q.text}</td>
-      <td style="white-space:nowrap; font-weight:600">${opt ? opt.label : '─'}</td>
+      <td>${TR(q.text)}</td>
+      <td style="white-space:nowrap; font-weight:600">${opt ? TR(opt.label) : '─'}</td>
       <td style="text-align:center">${opt ? opt.value : '─'}</td>
     </tr>`;
   }).join('');
 
   return `
     <div class="report-section">
-      <div class="report-section-title">作答詳細記錄</div>
+      <div class="report-section-title">${TR('作答詳細記錄')}</div>
       <table class="score-table">
-        <thead><tr><th style="width:40px">題號</th><th>題目</th><th>作答</th><th style="text-align:center">分值</th></tr></thead>
+        <thead><tr><th style="width:40px">${TR('題號')}</th><th>${TR('題目')}</th><th>${TR('作答')}</th><th style="text-align:center">${TR('分值')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1076,7 +1099,7 @@ function bindEvents() {
       const age = ageFromDOB(v);
       S.profile.subjectAge = age;
       const ageEl = document.getElementById('f-subjectAge');
-      if (ageEl) ageEl.value = age ? age + ' 歲' : '';
+      if (ageEl) ageEl.value = age ? age + L3(' 歲',' 岁',' yrs') : '';
       refreshScalesInline();
     };
     dobEl.addEventListener('change', syncDOB);
@@ -1238,14 +1261,14 @@ function bindEvents() {
       const progressFill = document.querySelector('.progress-fill');
       if (progressFill) progressFill.style.width = pct + '%';
       const progressLabel = document.querySelector('.q-progress-label');
-      if (progressLabel) progressLabel.textContent = `${answered} / ${total} 題已作答（${pct}%）`;
+      if (progressLabel) progressLabel.textContent = L3(`${answered} / ${total} 題已作答（${pct}%）`, `${answered} / ${total} 题已作答（${pct}%）`, `${answered} / ${total} answered (${pct}%)`);
       const countEl = document.querySelector('.q-answered-count');
-      if (countEl) countEl.innerHTML = `已完成 <strong>${answered}</strong> / ${total} 題`;
+      if (countEl) countEl.innerHTML = L3(`已完成 <strong>${answered}</strong> / ${total} 題`, `已完成 <strong>${answered}</strong> / ${total} 题`, `Done <strong>${answered}</strong> / ${total}`);
       const submitBtn = document.querySelector('[data-action="submit"]');
       if (submitBtn) {
         const canSubmit = answered === total;
         submitBtn.disabled = !canSubmit;
-        submitBtn.textContent = canSubmit ? '✓ 完成並查看報告' : `尚餘 ${total - answered} 題未作答`;
+        submitBtn.textContent = canSubmit ? L3('✓ 完成並查看報告','✓ 完成并查看报告','✓ Finish & view report') : L3(`尚餘 ${total - answered} 題未作答`,`尚余 ${total - answered} 题未作答`,`${total - answered} item(s) remaining`);
       }
 
       // PHQ-9 Q9 flag highlight
@@ -1282,11 +1305,11 @@ function bindEvents() {
 function ensureSubjectSynced() {
   if (!isProjectLaunched()) return true;
   const p = S.profile;
-  if (!p.subjectName)   { alert('請先填寫受測者姓名'); return false; }
-  if (!p.subjectDOB)    { alert('請先填寫受測者出生日期'); return false; }
-  if (!p.subjectGender) { alert('請先選擇受測者性別'); return false; }
-  if (!p.subjectPhone)  { alert('請先填寫聯絡電話'); return false; }
-  if (!p.subjectEmail)  { alert('請先填寫聯絡信箱'); return false; }
+  if (!p.subjectName)   { alert(TR('請先填寫受測者姓名')); return false; }
+  if (!p.subjectDOB)    { alert(TR('請先填寫受測者出生日期')); return false; }
+  if (!p.subjectGender) { alert(TR('請先選擇受測者性別')); return false; }
+  if (!p.subjectPhone)  { alert(TR('請先填寫聯絡電話')); return false; }
+  if (!p.subjectEmail)  { alert(TR('請先填寫聯絡信箱')); return false; }
   return true;
 }
 
@@ -1342,6 +1365,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       applyProjectFilter();
       applySessionPrefill();
     } catch {}
+  }
+  // i18n: detect/restore language, re-render on change, wire the header switcher.
+  if (window.I18N) {
+    I18N.init();
+    I18N.onChange(() => render());
+    const sel = document.getElementById('lang-select');
+    if (sel) {
+      sel.value = I18N.lang;
+      sel.addEventListener('change', () => I18N.setLang(sel.value));
+    }
   }
   render();
 });
