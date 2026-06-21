@@ -1,6 +1,8 @@
 // BrainQ10 — 主應用程式
 'use strict';
 
+const APP_VERSION = 'v1.3';
+
 // ─────────────────────────────────────────
 // 狀態
 // ─────────────────────────────────────────
@@ -18,6 +20,7 @@ const S = {
     assessmentDate: todayStr()
   },
   activeScaleId: null,
+  copsoqVersion: null,   // 'short' | 'middle' | 'long'（versioned 量表用，null = 用 defaultVersion）
   answers: {},           // { questionId: value }
   completedReports: {},  // { scaleId: reportData }
   subjectSynced: false   // true once contact info has been pushed to backend in this session
@@ -142,6 +145,7 @@ function renderScaleCards() {
     if (scale.category.includes('ADHD'))      badgeCls = 'badge-adhd';
     else if (scale.category.includes('認知')) badgeCls = 'badge-cognitive';
     else if (scale.category.includes('行為')) badgeCls = 'badge-behavior';
+    else if (scale.category.includes('職場')) badgeCls = 'badge-work';
 
     const rolesLabel = (scale.criteria.roles || []).map(r =>
       ({self:TR('本人'),parent:TR('家長'),teacher:TR('教師'),other:TR('其他')}[r])
@@ -230,14 +234,15 @@ function bindScaleCardEvents() {
         if (!st.enabled) { refreshScalesInline(); return; }
       }
       if (action === 'start') {
-        S.activeScaleId = id; S.answers = {};
+        S.activeScaleId = id; S.answers = {}; S.copsoqVersion = null;
         S.view = 'questionnaire'; render(); window.scrollTo(0, 0);
       } else if (action === 'redo') {
-        S.activeScaleId = id; S.answers = {};
+        S.activeScaleId = id; S.answers = {}; S.copsoqVersion = null;
         delete S.completedReports[id];
         S.view = 'questionnaire'; render(); window.scrollTo(0, 0);
       } else if (action === 'view-report') {
-        S.activeScaleId = id; S.view = 'report'; render(); window.scrollTo(0, 0);
+        S.activeScaleId = id; S.copsoqVersion = (S.completedReports[id] && S.completedReports[id].copsoqVersion) || null;
+        S.view = 'report'; render(); window.scrollTo(0, 0);
       }
     });
   });
@@ -344,6 +349,26 @@ function renderHome() {
 // ─────────────────────────────────────────
 // 問卷渲染
 // ─────────────────────────────────────────
+// 版本選擇晶片（短／中／長）— 僅 versioned 量表（COPSOQ）顯示
+function renderVersionSelector(scale, total) {
+  if (!scale.versioned) return '';
+  const cur = activeVersion(scale);
+  const labels = {
+    short:  L3('短版', '短版', 'Short'),
+    middle: L3('中版', '中版', 'Middle'),
+    long:   L3('長版', '長版', 'Long')
+  };
+  const chips = (scale.versions || []).map(v => `
+    <button class="ver-chip ${v === cur ? 'active' : ''}" data-action="copsoq-ver" data-ver="${v}">${labels[v]}</button>
+  `).join('');
+  return `
+    <div class="ver-selector">
+      <span class="ver-selector-label">${L3('問卷版本', '问卷版本', 'Version')}</span>
+      <div class="ver-chips">${chips}</div>
+      <span class="ver-selector-count">${L3(`共 ${total} 題`, `共 ${total} 题`, `${total} items`)}</span>
+    </div>`;
+}
+
 function renderQuestionnaire() {
   const scale = SCALES.find(s => s.id === S.activeScaleId);
   if (!scale) return `<p>${TR('錯誤：找不到量表')}</p>`;
@@ -354,13 +379,21 @@ function renderQuestionnaire() {
   const answered = allQ.filter(q => S.answers[q.id] !== undefined).length;
   const pct = total > 0 ? Math.round(answered / total * 100) : 0;
 
+  // 版本過濾後的可見題目與連續顯示編號（versioned 量表會跳過不屬於該版本的題）
+  const visibleIds = new Set(allQ.map(q => q.id));
+  const numMap = {};
+  allQ.forEach((q, i) => { numMap[q.id] = i + 1; });
+
   const sectionsHtml = scale.sections.map(section => {
+    const visibleQ = section.questions.filter(q => visibleIds.has(q.id));
+    if (!visibleQ.length) return '';
+
     const sectionHeader = section.label
       ? `<div class="q-section-header">📋 ${TR(section.label)}</div>` : '';
     const sectionNote = section.note
       ? `<div class="q-section-note">ℹ️ ${TR(section.note)}</div>` : '';
 
-    const questionsHtml = section.questions.map(q => {
+    const questionsHtml = visibleQ.map(q => {
       const val = S.answers[q.id];
       const isAnswered = val !== undefined;
       const isFlag = q.flag && val && val > 0;
@@ -378,8 +411,8 @@ function renderQuestionnaire() {
       }).join('');
 
       return `
-        <div class="q-item ${isAnswered ? 'answered' : ''} ${isFlag ? 'flagged' : ''}" id="q-${q.id}">
-          <div class="q-num">${q.id}</div>
+        <div class="q-item ${isAnswered ? 'answered' : ''} ${isFlag ? 'flagged' : ''}" id="q-${q.id}" data-no="${numMap[q.id]}">
+          <div class="q-num">${numMap[q.id]}</div>
           <div>
             <div class="q-text">${TR(q.text)}</div>
             <div class="q-options ${optClass}">${optionsHtml}</div>
@@ -405,6 +438,9 @@ function renderQuestionnaire() {
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
         </div>
       </div>
+
+      <!-- 版本選擇器（versioned 量表） -->
+      ${renderVersionSelector(scale, total)}
 
       <!-- 作答說明 -->
       <div class="q-instructions">${TR(scale.instructions)}</div>
@@ -449,6 +485,7 @@ function buildReportHTML() {
     else if (scale.scoring.type === 'bach')         body = renderBachReport(report, scale);
     else if (scale.scoring.type === 'mdq')          body = renderMdqReport(report, scale);
     else if (scale.scoring.type === 'audit')        body = renderAuditReport(report, scale);
+    else if (scale.scoring.type === 'copsoq')       body = renderCopsoqReport(report, scale);
     const flags = (report.flags || []).map(f => `<div class="report-flag">⚠️ ${TR(f.message)}</div>`).join('');
     return `
       <section class="report-section-doc">
@@ -536,6 +573,8 @@ function renderReport() {
     bodyHtml = renderMdqReport(report, scale);
   } else if (scale.scoring.type === 'audit') {
     bodyHtml = renderAuditReport(report, scale);
+  } else if (scale.scoring.type === 'copsoq') {
+    bodyHtml = renderCopsoqReport(report, scale);
   }
 
   // Flags
@@ -901,6 +940,97 @@ function renderAuditReport(report, scale) {
     ${renderScoreBreakdown(scale, report)}`;
 }
 
+// ── 計分：copsoq（COPSOQ III，各向度 0–100 + 紅黃綠三區）
+function copsoqBand(score, dir) {
+  // 回傳 { key, color, label } — demand：高分=不利；resource：高分=有利
+  const GOOD = { key: 'good', color: '#27ae60', icon: '🟢', label: TR('良好') };
+  const MID  = { key: 'mid',  color: '#f39c12', icon: '🟡', label: TR('中等') };
+  const BAD  = { key: 'bad',  color: '#e74c3c', icon: '🔴', label: TR('需關注') };
+  const tier = score <= 33.3 ? 'low' : score <= 66.6 ? 'mid' : 'high';
+  if (tier === 'mid') return MID;
+  if (dir === 'demand') return tier === 'high' ? BAD : GOOD;
+  return tier === 'high' ? GOOD : BAD; // resource
+}
+
+function renderCopsoqReport(report, scale) {
+  const sc = scale.scoring;
+  const dims = sc.dimensions;
+  const dimScores = report.dimScores || {};
+  const verLabel = { short: L3('短版','短版','Short'), middle: L3('中版','中版','Middle'), long: L3('長版','長版','Long') }[report.copsoqVersion] || '';
+
+  // 統計需關注（紅燈）向度
+  const badDims = [];
+  Object.keys(dimScores).forEach(d => {
+    if (!dims[d]) return;
+    const b = copsoqBand(dimScores[d].score, dims[d].dir);
+    if (b.key === 'bad') badDims.push(TR(dims[d].name));
+  });
+
+  const summaryStyle = badDims.length
+    ? 'background:#fde8e818; border-color:#e74c3c; color:#c0392b;'
+    : 'background:#e8f8ee18; border-color:#27ae60; color:#1e8449;';
+  const summary = `
+    <div class="report-summary" style="${summaryStyle}">
+      <div class="report-summary-label">${TR('職場心理社會風險概覽')}（${verLabel}）</div>
+      <div class="report-summary-result">${badDims.length
+        ? L3(`${badDims.length} 個向度需關注`, `${badDims.length} 个向度需关注`, `${badDims.length} dimension(s) need attention`)
+        : L3('未發現高風險向度','未发现高风险向度','No high-risk dimensions')}</div>
+      <div class="report-summary-note">${badDims.length
+        ? L3('🔴 需關注：','🔴 需关注：','🔴 Attention: ') + badDims.join('、')
+        : L3('各向度均落在中等或良好範圍。','各向度均落在中等或良好范围。','All dimensions fall in the moderate or favourable range.')}</div>
+    </div>`;
+
+  // 依領域分組呈現
+  const domainsHtml = (sc.domainOrder || []).map(domain => {
+    const rows = Object.keys(dims).filter(d => dims[d].domain === domain && dimScores[d]).map(d => {
+      const score = dimScores[d].score;
+      const band = copsoqBand(score, dims[d].dir);
+      const dirTag = dims[d].dir === 'demand'
+        ? L3('要求','要求','demand') : L3('資源','资源','resource');
+      return `
+        <tr>
+          <td><strong>${TR(dims[d].name)}</strong> <span class="copsoq-dir">(${dirTag})</span></td>
+          <td class="score-bar-cell">
+            <div class="mini-bar"><div class="mini-bar-fill" style="width:${score}%; background:${band.color}"></div></div>
+          </td>
+          <td style="text-align:right; white-space:nowrap;">${score}/100</td>
+          <td><span class="dsm-badge" style="background:${band.color}20; color:${band.color}">${band.icon} ${band.label}</span></td>
+        </tr>`;
+    }).join('');
+    if (!rows) return '';
+    return `
+      <div class="report-section">
+        <div class="report-section-title">${TR(domain)}</div>
+        <table class="score-table">
+          <thead><tr>
+            <th>${TR('向度')}</th><th>${TR('分布')}</th><th style="text-align:right;">${L3('得分','得分','Score')}</th><th>${TR('程度')}</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }).join('');
+
+  const cdNote = sc.cdNote ? `
+    <p class="copsoq-footnote">${L3(
+      '※「認知要求」向度本系統採「要求」方向（高分=較高負荷）；國際上此向度方向尚有討論。',
+      '※「认知要求」向度本系统采「要求」方向（高分=较高负荷）；国际上此向度方向尚有讨论。',
+      '※ "Cognitive Demands" is treated here as a demand (higher = heavier load); its direction is debated internationally.')}</p>` : '';
+
+  const method = `
+    <p class="copsoq-footnote">${L3(
+      '計分：各向度作答平均轉為 0–100 分，依固定三分位（0–33 / 34–66 / 67–100）配「要求／資源」方向給予紅黃綠燈號（此為啟發式分區，非官方母群三分位）。',
+      '计分：各向度作答平均转为 0–100 分，依固定三分位（0–33 / 34–66 / 67–100）配「要求／资源」方向给予红黄绿灯号（此为启发式分区，非官方母群三分位）。',
+      'Scoring: each dimension is averaged to 0–100 and coloured by fixed tertiles (0–33 / 34–66 / 67–100) per demand/resource direction (a heuristic split, not official population tertiles).')}</p>`;
+
+  const validityNote = `
+    <div class="report-flag" style="background:#fff8e1; border-color:#f0c000; color:#7a5b00;">⚠️ ${L3(
+      '繁體中文為本系統依官方英文之台灣譯本；除「疲勞」相關向度採台灣職場疲勞量表用詞外，其餘未經官方心理計量實證。本結果僅供參考，不構成診斷。',
+      '繁体中文为本系统依官方英文之台湾译本；除「疲劳」相关向度采台湾职场疲劳量表用词外，其余未经官方心理计量实证。本结果仅供参考，不构成诊断。',
+      'Traditional Chinese is this system\'s Taiwan translation of the official English items; except the burnout-related dimensions (Taiwan burnout scale wording), it has not been psychometrically validated. For reference only; not a diagnosis.')}</div>`;
+
+  return `${summary}${validityNote}${domainsHtml}${method}${cdNote}`;
+}
+
 // ── 原始作答詳情
 function renderScoreBreakdown(scale, report) {
   const allQ = getAllQuestions(scale);
@@ -1036,6 +1166,24 @@ function calculateScore(scale, answers) {
     result.cutoffLabel = gender === 'female' ? '女性切點' : '男性切點';
     result.problematic = total >= cutoff;
     result.range = sc.ranges.find(r => total >= r.min && total <= r.max) || sc.ranges[sc.ranges.length - 1];
+
+  } else if (sc.type === 'copsoq') {
+    // 各向度：作答題（含反向）平均 → 0–100；未作答題不計入分母
+    result.copsoqVersion = activeVersion(scale);
+    const qs = getAllQuestions(scale); // 已依版本過濾
+    const byDim = {};
+    qs.forEach(q => {
+      const v = answers[q.id];
+      if (v === undefined) return;
+      const s = q.rev ? (4 - v) : v;
+      (byDim[q.dim] = byDim[q.dim] || []).push(s);
+    });
+    result.dimScores = {};
+    Object.keys(byDim).forEach(dim => {
+      const arr = byDim[dim];
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      result.dimScores[dim] = { score: Math.round(mean / 4 * 100), n: arr.length };
+    });
   }
 
   return result;
@@ -1044,8 +1192,21 @@ function calculateScore(scale, answers) {
 // ─────────────────────────────────────────
 // 工具函數
 // ─────────────────────────────────────────
+// 取得目前作答中（或預設）的版本 — 僅 versioned 量表（COPSOQ）有意義
+function activeVersion(scale) {
+  if (!scale || !scale.versioned) return null;
+  return S.copsoqVersion || scale.defaultVersion;
+}
+
+// 依版本過濾題目：short→core；middle→core+middle；long→全部
 function getAllQuestions(scale) {
-  return scale.sections.flatMap(s => s.questions);
+  const all = scale.sections.flatMap(s => s.questions);
+  if (!scale.versioned) return all;
+  const v = activeVersion(scale);
+  const allow = v === 'short' ? ['core']
+              : v === 'middle' ? ['core', 'middle']
+              : ['core', 'middle', 'long'];
+  return all.filter(q => allow.indexOf(q.lvl) !== -1);
 }
 
 function getRange(ranges, score) {
@@ -1175,6 +1336,7 @@ function bindEvents() {
         if (!ensureSubjectSynced()) return;
         S.activeScaleId = id;
         S.answers = {};
+        S.copsoqVersion = null;
         S.view = 'questionnaire';
         render();
         window.scrollTo(0, 0);
@@ -1186,12 +1348,28 @@ function bindEvents() {
         if (!ensureSubjectSynced()) return;
         S.activeScaleId = id;
         S.answers = {};
+        S.copsoqVersion = null;
         delete S.completedReports[id];
         S.view = 'questionnaire';
         render();
         window.scrollTo(0, 0);
+      } else if (action === 'copsoq-ver') {
+        // 切換問卷版本：若已有作答，先確認再清空
+        const scale = SCALES.find(s => s.id === S.activeScaleId);
+        const ver = btn.dataset.ver;
+        if (!scale || ver === activeVersion(scale)) return;
+        const hasAnswers = Object.keys(S.answers).length > 0;
+        if (hasAnswers && !confirm(L3(
+          '切換版本會清除目前的作答，確定要切換嗎？',
+          '切换版本会清除当前的作答，确定要切换吗？',
+          'Switching version will clear your current answers. Continue?'))) return;
+        S.copsoqVersion = ver;
+        S.answers = {};
+        render();
+        window.scrollTo(0, 0);
       } else if (action === 'view-report') {
         S.activeScaleId = id;
+        S.copsoqVersion = (S.completedReports[id] && S.completedReports[id].copsoqVersion) || null;
         S.view = 'report';
         render();
         window.scrollTo(0, 0);
@@ -1252,7 +1430,7 @@ function bindEvents() {
       item.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       item.classList.add('answered');
-      item.querySelector('.q-num').textContent = qid;
+      item.querySelector('.q-num').textContent = item.dataset.no || qid;
 
       // Update progress
       const total = allQ.length;
@@ -1351,11 +1529,16 @@ function applySessionPrefill() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Bach flower scale ordered first
+  // Bach flower scale ordered first, COPSOQ III pinned right after it
   const bachIdx = SCALES.findIndex(s => s.id === 'bach');
   if (bachIdx > 0) {
     const [bach] = SCALES.splice(bachIdx, 1);
     SCALES.unshift(bach);
+  }
+  const copsoqIdx = SCALES.findIndex(s => s.id === 'copsoq');
+  if (copsoqIdx > 1) {
+    const [copsoq] = SCALES.splice(copsoqIdx, 1);
+    SCALES.splice(1, 0, copsoq);
   }
   // Optional artisebio backend bridge — when launched via project QR, this
   // pulls session info (name/DOB/gender) and the scalar.scales filter.

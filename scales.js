@@ -103,6 +103,45 @@ const AUDIT_3OPT = [
   { label: '有，去年發生過', value: 4 }
 ];
 
+// ─────────────────────────────────────────────
+// COPSOQ III 選項組（value 0..4；計分時線性轉 0–100）
+// ─────────────────────────────────────────────
+const CO_FREQ = [            // RO1 頻率
+  { label: '總是',          value: 4 },
+  { label: '經常',          value: 3 },
+  { label: '有時',          value: 2 },
+  { label: '很少',          value: 1 },
+  { label: '從不／幾乎沒有', value: 0 }
+];
+const CO_EXTENT = [          // RO2 程度
+  { label: '極大程度', value: 4 },
+  { label: '很大程度', value: 3 },
+  { label: '某種程度', value: 2 },
+  { label: '小程度',   value: 1 },
+  { label: '極小程度', value: 0 }
+];
+const CO_SAT = [             // RO6 滿意度
+  { label: '非常滿意',  value: 4 },
+  { label: '滿意',      value: 3 },
+  { label: '普通',      value: 2 },
+  { label: '不滿意',    value: 1 },
+  { label: '非常不滿意', value: 0 }
+];
+const CO_HEALTH = [          // RO7 自評健康
+  { label: '極佳',   value: 4 },
+  { label: '非常好', value: 3 },
+  { label: '好',     value: 2 },
+  { label: '尚可',   value: 1 },
+  { label: '差',     value: 0 }
+];
+const CO_RECENT = [          // RO9 近四週頻率
+  { label: '一直如此',    value: 4 },
+  { label: '大部分時間',  value: 3 },
+  { label: '部分時間',    value: 2 },
+  { label: '少部分時間',  value: 1 },
+  { label: '完全沒有',    value: 0 }
+];
+
 const SCALES = [
   // ─────────────────────────────────────────────
   // 1. GDS-15 老年憂鬱量表
@@ -972,6 +1011,217 @@ const SCALES = [
         sensitivity: '過度敏感類',
         despair:     '絕望與沮喪類',
         overcare:    '過度關注他人類'
+      }
+    }
+  },
+
+  // ─────────────────────────────────────────────
+  // 8. COPSOQ III 職場心理社會量表（短／中／長三版可選）
+  // ─────────────────────────────────────────────
+  {
+    id: 'copsoq',
+    name: 'COPSOQ III 職場量表',
+    fullName: '哥本哈根職場心理社會問卷 第三版（COPSOQ III）',
+    description: '評估職場心理社會工作環境：工作要求、組織與內容、人際與領導、身心健康等向度（短／中／長三版可選）',
+    category: '職場健康',
+    estimatedMinutes: 15,
+    criteria: { minAge: 18, maxAge: null, roles: ['self'] },
+    versioned: true,
+    defaultVersion: 'middle',
+    versions: ['short', 'middle', 'long'],
+    instructions: '以下問題請依您「近期的實際工作狀況」作答；健康與幸福部分請就「過去四週」的感受作答。',
+    sections: [
+      {
+        id: 'co_demands', label: '工作要求',
+        questions: [
+          { id: 5001, dim: 'QD', lvl: 'core',   text: '您是否常因時間不足而無法完成所有的工作任務？',         options: CO_FREQ },
+          { id: 5002, dim: 'QD', lvl: 'core',   text: '您的工作是否經常落後、做不完？',                       options: CO_FREQ },
+          { id: 5003, dim: 'QD', lvl: 'middle', text: '您的工作量分配是否不平均，以致工作堆積如山？',         options: CO_FREQ },
+          { id: 5004, dim: 'QD', lvl: 'long',   text: '您是否有足夠的時間完成您的工作任務？',                 options: CO_FREQ, rev: true },
+          { id: 5005, dim: 'WP', lvl: 'core',   text: '您是否必須以很快的速度工作？',                         options: CO_FREQ },
+          { id: 5006, dim: 'WP', lvl: 'core',   text: '您是否整天都維持在高度的工作步調？',                   options: CO_EXTENT },
+          { id: 5007, dim: 'WP', lvl: 'long',   text: '您是否必須持續維持高度的工作步調？',                   options: CO_EXTENT },
+          { id: 5008, dim: 'CD', lvl: 'long',   text: '您工作時是否必須同時留意許多事情？',                   options: CO_FREQ },
+          { id: 5009, dim: 'CD', lvl: 'long',   text: '您的工作是否要求您記住許多事情？',                     options: CO_FREQ },
+          { id: 5010, dim: 'CD', lvl: 'long',   text: '您的工作是否要求您擅長想出新點子？',                   options: CO_FREQ },
+          { id: 5011, dim: 'CD', lvl: 'long',   text: '您的工作是否要求您做出困難的決定？',                   options: CO_FREQ },
+          { id: 5012, dim: 'ED', lvl: 'core',   text: '處理他人的個人問題是否為您工作的一部分？',             options: CO_FREQ },
+          { id: 5013, dim: 'ED', lvl: 'core',   text: '您的工作在情緒上是否要求很高？',                       options: CO_EXTENT },
+          { id: 5014, dim: 'ED', lvl: 'middle', text: '您的工作是否使您身處令人情緒不安的情境？',             options: CO_FREQ },
+          { id: 5015, dim: 'HE', lvl: 'middle', text: '您的工作是否要求您隱藏自己的感受？',                   options: CO_EXTENT },
+          { id: 5016, dim: 'HE', lvl: 'middle', text: '無論他人如何對待您，您的工作是否都要求您對每個人保持親切與開放？', options: CO_EXTENT },
+          { id: 5017, dim: 'HE', lvl: 'middle', text: '您的工作是否要求您不要表達自己的意見？',               options: CO_FREQ },
+          { id: 5018, dim: 'HE', lvl: 'long',   text: '即使您不願意，您的工作是否仍要求您平等對待每一個人？', options: CO_FREQ }
+        ]
+      },
+      {
+        id: 'co_orga', label: '工作組織與內容',
+        questions: [
+          { id: 5019, dim: 'IN', lvl: 'core',   text: '您對於和自己工作有關的決定，是否有很大的影響力？',     options: CO_FREQ },
+          { id: 5020, dim: 'IN', lvl: 'middle', text: '您能否影響分配給您的工作量？',                         options: CO_FREQ },
+          { id: 5021, dim: 'IN', lvl: 'middle', text: '您對於自己在工作中做哪些事是否有任何影響力？',         options: CO_FREQ },
+          { id: 5022, dim: 'IN', lvl: 'middle', text: '您對於自己「如何」完成工作是否有任何影響力？',         options: CO_FREQ },
+          { id: 5023, dim: 'IN', lvl: 'long',   text: '對於和誰一起工作，您是否有發言權？',                   options: CO_FREQ },
+          { id: 5024, dim: 'IN', lvl: 'long',   text: '您能否影響自己的工作速度？',                           options: CO_FREQ },
+          { id: 5025, dim: 'PD', lvl: 'core',   text: '您的工作是否讓您有機會學習新事物？',                   options: CO_EXTENT },
+          { id: 5026, dim: 'PD', lvl: 'core',   text: '您能否在工作中運用自己的技能或專長？',                 options: CO_EXTENT },
+          { id: 5027, dim: 'PD', lvl: 'middle', text: '您的工作是否給您發展技能的機會？',                     options: CO_EXTENT },
+          { id: 5028, dim: 'VA', lvl: 'long',   text: '您的工作是否富有變化？',                               options: CO_FREQ },
+          { id: 5029, dim: 'VA', lvl: 'long',   text: '您是否必須一再重複做同樣的事情？',                     options: CO_FREQ, rev: true },
+          { id: 5030, dim: 'CT', lvl: 'middle', text: '您能否決定何時休息？',                                 options: CO_FREQ },
+          { id: 5031, dim: 'CT', lvl: 'middle', text: '您能否大致依自己的意願請假？',                         options: CO_FREQ },
+          { id: 5032, dim: 'CT', lvl: 'middle', text: '您能否暫離工作和同事聊聊天？',                         options: CO_FREQ },
+          { id: 5033, dim: 'CT', lvl: 'middle', text: '如果有私事，您能否未經特別許可離開工作崗位半小時？',   options: CO_FREQ },
+          { id: 5034, dim: 'CT', lvl: 'long',   text: '您是否必須加班？',                                     options: CO_FREQ, rev: true },
+          { id: 5035, dim: 'MW', lvl: 'core',   text: '您的工作是否有意義？',                                 options: CO_EXTENT },
+          { id: 5036, dim: 'MW', lvl: 'middle', text: '您是否覺得自己所做的工作很重要？',                     options: CO_EXTENT }
+        ]
+      },
+      {
+        id: 'co_leader', label: '人際關係與領導',
+        questions: [
+          { id: 5037, dim: 'PR', lvl: 'core',   text: '在您的工作場所，對於例如重要決定、變動或未來計畫，您是否都能事先充分得知？', options: CO_EXTENT },
+          { id: 5038, dim: 'PR', lvl: 'core',   text: '為了把工作做好，您是否能得到所需的一切資訊？',         options: CO_EXTENT },
+          { id: 5039, dim: 'RE', lvl: 'core',   text: '您的工作是否受到管理階層的認可與賞識？',               options: CO_EXTENT },
+          { id: 5040, dim: 'RE', lvl: 'long',   text: '您的工作場所管理階層是否尊重您？',                     options: CO_EXTENT },
+          { id: 5041, dim: 'RE', lvl: 'long',   text: '在您的工作場所，您是否受到公平對待？',                 options: CO_EXTENT },
+          { id: 5042, dim: 'CL', lvl: 'core',   text: '您的工作是否有明確的目標？',                           options: CO_EXTENT },
+          { id: 5043, dim: 'CL', lvl: 'middle', text: '您是否清楚知道哪些事務是您的職責？',                   options: CO_EXTENT },
+          { id: 5044, dim: 'CL', lvl: 'middle', text: '您是否確切知道工作上對您的期望是什麼？',               options: CO_EXTENT },
+          { id: 5045, dim: 'CO', lvl: 'core',   text: '您在工作中是否被賦予相互矛盾的要求？',                 options: CO_EXTENT },
+          { id: 5046, dim: 'CO', lvl: 'core',   text: '您是否有時必須去做一些本該以不同方式完成的事？',       options: CO_EXTENT },
+          { id: 5047, dim: 'IT', lvl: 'middle', text: '您是否有時必須去做一些看似不必要的事？',               options: CO_EXTENT },
+          { id: 5048, dim: 'QL', lvl: 'core',   text: '您的直屬主管是否擅長規劃工作？',                       options: CO_EXTENT },
+          { id: 5049, dim: 'QL', lvl: 'core',   text: '您的直屬主管是否擅長解決衝突？',                       options: CO_EXTENT },
+          { id: 5050, dim: 'QL', lvl: 'middle', text: '您的直屬主管是否確保部屬有良好的發展機會？',           options: CO_EXTENT },
+          { id: 5051, dim: 'QL', lvl: 'long',   text: '您的直屬主管是否高度重視工作滿意度？',                 options: CO_EXTENT },
+          { id: 5052, dim: 'SS', lvl: 'core',   text: '在需要時，您多常從直屬主管那裡得到協助與支持？',       options: CO_FREQ },
+          { id: 5053, dim: 'SS', lvl: 'middle', text: '在需要時，您的直屬主管多常願意傾聽您工作上的問題？',   options: CO_FREQ },
+          { id: 5054, dim: 'SS', lvl: 'long',   text: '您的直屬主管多常和您談論您的工作表現好不好？',         options: CO_FREQ },
+          { id: 5055, dim: 'SC', lvl: 'core',   text: '在需要時，您多常從同事那裡得到協助與支持？',           options: CO_FREQ },
+          { id: 5056, dim: 'SC', lvl: 'middle', text: '在需要時，您的同事多常願意傾聽您工作上的問題？',       options: CO_FREQ },
+          { id: 5057, dim: 'SC', lvl: 'long',   text: '您的同事多常和您談論您的工作表現好不好？',             options: CO_FREQ },
+          { id: 5058, dim: 'SW', lvl: 'core',   text: '您和同事之間的氣氛是否融洽？',                         options: CO_FREQ },
+          { id: 5059, dim: 'SW', lvl: 'middle', text: '在您的工作場所，您是否感覺自己是團體的一份子？',       options: CO_FREQ },
+          { id: 5060, dim: 'SW', lvl: 'long',   text: '工作上同事之間是否合作良好？',                         options: CO_FREQ }
+        ]
+      },
+      {
+        id: 'co_interface', label: '工作—個人介面',
+        questions: [
+          { id: 5061, dim: 'CW', lvl: 'long',   text: '您是否樂於向他人介紹自己的工作場所？',                 options: CO_EXTENT },
+          { id: 5062, dim: 'CW', lvl: 'long',   text: '您是否覺得自己的工作場所對您非常重要？',               options: CO_EXTENT },
+          { id: 5063, dim: 'CW', lvl: 'long',   text: '您是否願意推薦他人來您的工作場所應徵職位？',           options: CO_EXTENT },
+          { id: 5064, dim: 'CW', lvl: 'long',   text: '您多常考慮另謀他職？',                                 options: CO_FREQ, rev: true },
+          { id: 5065, dim: 'CW', lvl: 'long',   text: '身為這個組織的一員，您是否感到自豪？',                 options: CO_EXTENT },
+          { id: 5066, dim: 'JI', lvl: 'core',   text: '您是否擔心會失業？',                                   options: CO_EXTENT },
+          { id: 5067, dim: 'JI', lvl: 'core',   text: '您是否擔心萬一失業會很難再找到工作？',                 options: CO_EXTENT },
+          { id: 5068, dim: 'JI', lvl: 'long',   text: '您是否擔心新科技會使您變得多餘？',                     options: CO_EXTENT },
+          { id: 5069, dim: 'IW', lvl: 'core',   text: '您是否擔心被違反意願調到其他工作？',                   options: CO_EXTENT },
+          { id: 5070, dim: 'IW', lvl: 'middle', text: '您是否擔心被違反意願更動工作時間表（輪班、工作日、上下班時間）？', options: CO_EXTENT },
+          { id: 5071, dim: 'IW', lvl: 'middle', text: '您是否擔心薪資被調降（減薪、改採變動薪）？',           options: CO_EXTENT },
+          { id: 5072, dim: 'IW', lvl: 'long',   text: '您是否擔心被違反意願更動工作任務？',                   options: CO_EXTENT },
+          { id: 5073, dim: 'IW', lvl: 'long',   text: '您的工作是否有良好的前景？',                           options: CO_EXTENT, rev: true },
+          { id: 5074, dim: 'QW', lvl: 'middle', text: '您是否滿意您工作場所所完成工作的品質？',               options: CO_EXTENT },
+          { id: 5075, dim: 'QW', lvl: 'long',   text: '您覺得自己能以令人滿意的品質完成工作任務的程度如何？', options: CO_EXTENT },
+          { id: 5076, dim: 'JS', lvl: 'core',   text: '整體考量所有因素，您對整份工作的滿意程度？',           options: CO_SAT },
+          { id: 5077, dim: 'JS', lvl: 'middle', text: '您對工作前景的滿意程度？',                             options: CO_SAT },
+          { id: 5078, dim: 'JS', lvl: 'middle', text: '您對薪資的滿意程度？',                                 options: CO_SAT },
+          { id: 5079, dim: 'JS', lvl: 'long',   text: '您對工作實體環境條件的滿意程度？',                     options: CO_SAT },
+          { id: 5080, dim: 'JS', lvl: 'long',   text: '您對自身能力被運用方式的滿意程度？',                   options: CO_SAT },
+          { id: 5081, dim: 'WF', lvl: 'core',   text: '您是否覺得工作耗盡您太多精力，以致對私人生活造成負面影響？', options: CO_EXTENT },
+          { id: 5082, dim: 'WF', lvl: 'core',   text: '您是否覺得工作占用您太多時間，以致對私人生活造成負面影響？', options: CO_EXTENT },
+          { id: 5083, dim: 'WF', lvl: 'long',   text: '是否曾有需要同時兼顧工作與家庭的情況？',               options: CO_FREQ },
+          { id: 5084, dim: 'WF', lvl: 'long',   text: '我的工作要求是否干擾了我的私人與家庭生活？',           options: CO_EXTENT },
+          { id: 5085, dim: 'WF', lvl: 'long',   text: '因為工作職責，我是否必須變更私人與家庭活動的計畫？',   options: CO_EXTENT }
+        ]
+      },
+      {
+        id: 'co_capital', label: '社會資本',
+        questions: [
+          { id: 5086, dim: 'TE', lvl: 'middle', text: '員工之間整體而言是否彼此信任？',                       options: CO_EXTENT },
+          { id: 5087, dim: 'TE', lvl: 'long',   text: '員工之間是否會互相隱瞞資訊？',                         options: CO_EXTENT, rev: true },
+          { id: 5088, dim: 'TE', lvl: 'long',   text: '員工是否會對管理階層隱瞞資訊？',                       options: CO_EXTENT, rev: true },
+          { id: 5089, dim: 'TM', lvl: 'core',   text: '管理階層是否信任員工能把工作做好？',                   options: CO_EXTENT },
+          { id: 5090, dim: 'TM', lvl: 'core',   text: '員工是否能信任來自管理階層的資訊？',                   options: CO_EXTENT },
+          { id: 5091, dim: 'TM', lvl: 'middle', text: '員工是否能夠表達自己的看法與感受？',                   options: CO_EXTENT },
+          { id: 5092, dim: 'TM', lvl: 'long',   text: '管理階層是否會對員工隱瞞重要資訊？',                   options: CO_EXTENT, rev: true },
+          { id: 5093, dim: 'JU', lvl: 'core',   text: '衝突是否以公正的方式獲得解決？',                       options: CO_EXTENT },
+          { id: 5094, dim: 'JU', lvl: 'core',   text: '工作的分配是否公平？',                                 options: CO_EXTENT },
+          { id: 5095, dim: 'JU', lvl: 'long',   text: '員工把工作做好時，是否受到賞識？',                     options: CO_EXTENT },
+          { id: 5096, dim: 'JU', lvl: 'long',   text: '員工提出的所有建議，管理階層是否都認真看待？',         options: CO_EXTENT }
+        ]
+      },
+      {
+        id: 'co_health', label: '健康與幸福', note: '以下問題請就您「過去四週」的感受作答。',
+        questions: [
+          { id: 5097, dim: 'GH', lvl: 'long', text: '整體而言，您認為自己的健康狀況是？',     options: CO_HEALTH },
+          { id: 5098, dim: 'SL', lvl: 'long', text: '您多常睡得不好、睡不安穩？',             options: CO_RECENT },
+          { id: 5099, dim: 'SL', lvl: 'long', text: '您多常難以入睡？',                       options: CO_RECENT },
+          { id: 5100, dim: 'SL', lvl: 'long', text: '您多常太早醒來且無法再入睡？',           options: CO_RECENT },
+          { id: 5101, dim: 'SL', lvl: 'long', text: '您多常醒來好幾次且難以再入睡？',         options: CO_RECENT },
+          { id: 5102, dim: 'BO', lvl: 'long', text: '您是否常覺得疲勞？',                     options: CO_RECENT },
+          { id: 5103, dim: 'BO', lvl: 'long', text: '您是否常覺得身體上體力透支？',           options: CO_RECENT },
+          { id: 5104, dim: 'BO', lvl: 'long', text: '您是否常覺得情緒上心力交瘁？',           options: CO_RECENT },
+          { id: 5105, dim: 'BO', lvl: 'long', text: '您是否常覺得累？',                       options: CO_RECENT },
+          { id: 5106, dim: 'ST', lvl: 'long', text: '您多常難以放鬆？',                       options: CO_RECENT },
+          { id: 5107, dim: 'ST', lvl: 'long', text: '您多常感到易怒？',                       options: CO_RECENT },
+          { id: 5108, dim: 'ST', lvl: 'long', text: '您多常感到緊繃？',                       options: CO_RECENT },
+          { id: 5109, dim: 'SO', lvl: 'long', text: '您多常胃痛？',                           options: CO_RECENT },
+          { id: 5110, dim: 'SO', lvl: 'long', text: '您多常頭痛？',                           options: CO_RECENT },
+          { id: 5111, dim: 'SO', lvl: 'long', text: '您多常心悸？',                           options: CO_RECENT },
+          { id: 5112, dim: 'SO', lvl: 'long', text: '您多常各部位肌肉緊繃？',                 options: CO_RECENT },
+          { id: 5113, dim: 'CS', lvl: 'long', text: '您多常難以專注？',                       options: CO_RECENT },
+          { id: 5114, dim: 'CS', lvl: 'long', text: '您多常難以清晰思考？',                   options: CO_RECENT },
+          { id: 5115, dim: 'CS', lvl: 'long', text: '您多常難以做決定？',                     options: CO_RECENT },
+          { id: 5116, dim: 'CS', lvl: 'long', text: '您多常記不住事情？',                     options: CO_RECENT },
+          { id: 5117, dim: 'DS', lvl: 'long', text: '您多常感到悲傷？',                       options: CO_RECENT },
+          { id: 5118, dim: 'DS', lvl: 'long', text: '您多常缺乏自信？',                       options: CO_RECENT },
+          { id: 5119, dim: 'DS', lvl: 'long', text: '您多常感到良心不安或內疚？',             options: CO_RECENT },
+          { id: 5120, dim: 'DS', lvl: 'long', text: '您多常對日常事物失去興趣？',             options: CO_RECENT }
+        ]
+      }
+    ],
+    scoring: {
+      type: 'copsoq',
+      domainOrder: ['工作要求', '工作組織與內容', '人際關係與領導', '工作—個人介面', '社會資本', '健康與幸福'],
+      cdNote: true,
+      dimensions: {
+        QD: { name: '量化要求',         domain: '工作要求',       dir: 'demand' },
+        WP: { name: '工作步調',         domain: '工作要求',       dir: 'demand' },
+        CD: { name: '認知要求',         domain: '工作要求',       dir: 'demand' },
+        ED: { name: '情緒要求',         domain: '工作要求',       dir: 'demand' },
+        HE: { name: '隱藏情緒要求',     domain: '工作要求',       dir: 'demand' },
+        IN: { name: '工作影響力',       domain: '工作組織與內容', dir: 'resource' },
+        PD: { name: '發展可能性',       domain: '工作組織與內容', dir: 'resource' },
+        VA: { name: '工作變化性',       domain: '工作組織與內容', dir: 'resource' },
+        CT: { name: '工時掌控',         domain: '工作組織與內容', dir: 'resource' },
+        MW: { name: '工作意義',         domain: '工作組織與內容', dir: 'resource' },
+        PR: { name: '可預測性',         domain: '人際關係與領導', dir: 'resource' },
+        RE: { name: '認可',             domain: '人際關係與領導', dir: 'resource' },
+        CL: { name: '角色明確',         domain: '人際關係與領導', dir: 'resource' },
+        CO: { name: '角色衝突',         domain: '人際關係與領導', dir: 'demand' },
+        IT: { name: '不合理任務',       domain: '人際關係與領導', dir: 'demand' },
+        QL: { name: '領導品質',         domain: '人際關係與領導', dir: 'resource' },
+        SS: { name: '主管支持',         domain: '人際關係與領導', dir: 'resource' },
+        SC: { name: '同事支持',         domain: '人際關係與領導', dir: 'resource' },
+        SW: { name: '職場社群感',       domain: '人際關係與領導', dir: 'resource' },
+        CW: { name: '職場承諾',         domain: '工作—個人介面', dir: 'resource' },
+        JI: { name: '工作不安全感',     domain: '工作—個人介面', dir: 'demand' },
+        IW: { name: '工作條件不安全感', domain: '工作—個人介面', dir: 'demand' },
+        QW: { name: '工作品質',         domain: '工作—個人介面', dir: 'resource' },
+        JS: { name: '工作滿意',         domain: '工作—個人介面', dir: 'resource' },
+        WF: { name: '工作—生活衝突',    domain: '工作—個人介面', dir: 'demand' },
+        TE: { name: '水平信任',         domain: '社會資本',       dir: 'resource' },
+        TM: { name: '垂直信任',         domain: '社會資本',       dir: 'resource' },
+        JU: { name: '組織公正',         domain: '社會資本',       dir: 'resource' },
+        GH: { name: '自評健康',         domain: '健康與幸福',     dir: 'resource' },
+        SL: { name: '睡眠困擾',         domain: '健康與幸福',     dir: 'demand' },
+        BO: { name: '職業倦怠',         domain: '健康與幸福',     dir: 'demand' },
+        ST: { name: '壓力',             domain: '健康與幸福',     dir: 'demand' },
+        SO: { name: '身體壓力',         domain: '健康與幸福',     dir: 'demand' },
+        CS: { name: '認知壓力',         domain: '健康與幸福',     dir: 'demand' },
+        DS: { name: '憂鬱症狀',         domain: '健康與幸福',     dir: 'demand' }
       }
     }
   }
