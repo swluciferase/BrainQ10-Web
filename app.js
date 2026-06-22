@@ -349,23 +349,47 @@ function renderHome() {
 // ─────────────────────────────────────────
 // 問卷渲染
 // ─────────────────────────────────────────
-// 版本選擇晶片（短／中／長）— 僅 versioned 量表（COPSOQ）顯示
+// 各版本題數（短=core；中=core+middle；長=全部）
+function copsoqVersionCounts(scale) {
+  const all = scale.sections.flatMap(s => s.questions);
+  const cnt = v => {
+    const allow = v === 'short' ? ['core'] : v === 'middle' ? ['core', 'middle'] : ['core', 'middle', 'long'];
+    return all.filter(q => allow.indexOf(q.lvl) !== -1).length;
+  };
+  return { short: cnt('short'), middle: cnt('middle'), long: cnt('long') };
+}
+
+// 版本選擇器（短／中／長 segmented control）— 僅 versioned 量表（COPSOQ）顯示
 function renderVersionSelector(scale, total) {
   if (!scale.versioned) return '';
   const cur = activeVersion(scale);
-  const labels = {
+  const counts = copsoqVersionCounts(scale);
+  const base = scale.estimatedMinutes || 15;
+  const mid = counts.middle || 1;
+  const names = {
     short:  L3('短版', '短版', 'Short'),
     middle: L3('中版', '中版', 'Middle'),
     long:   L3('長版', '長版', 'Long')
   };
-  const chips = (scale.versions || []).map(v => `
-    <button class="ver-chip ${v === cur ? 'active' : ''}" data-action="copsoq-ver" data-ver="${v}">${labels[v]}</button>
-  `).join('');
+  const segs = (scale.versions || []).map(v => {
+    const n = counts[v];
+    const mins = Math.max(3, Math.round(n / mid * base));
+    const active = v === cur;
+    const sub = L3(`${n} 題 · 約 ${mins} 分`, `${n} 题 · 约 ${mins} 分`, `${n} items · ~${mins} min`);
+    return `
+      <button class="ver-seg ${active ? 'active' : ''}" data-action="copsoq-ver" data-ver="${v}" aria-pressed="${active}">
+        <span class="ver-seg-check">${active ? '✓' : ''}</span>
+        <span class="ver-seg-name">${names[v]}</span>
+        <span class="ver-seg-sub">${sub}</span>
+      </button>`;
+  }).join('');
   return `
-    <div class="ver-selector">
-      <span class="ver-selector-label">${L3('問卷版本', '问卷版本', 'Version')}</span>
-      <div class="ver-chips">${chips}</div>
-      <span class="ver-selector-count">${L3(`共 ${total} 題`, `共 ${total} 题`, `${total} items`)}</span>
+    <div class="ver-panel">
+      <div class="ver-panel-head">
+        <span class="ver-panel-kicker">${L3('問卷版本 · 請選擇', '问卷版本 · 请选择', 'QUESTIONNAIRE VERSION · CHOOSE')}</span>
+        <span class="ver-current"><span class="ver-current-dot"></span>${L3('目前：', '当前：', 'Current: ')}<strong>${names[cur]}</strong></span>
+      </div>
+      <div class="ver-segmented">${segs}</div>
     </div>`;
 }
 
